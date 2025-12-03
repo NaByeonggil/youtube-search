@@ -9,7 +9,6 @@ import {
 } from '@/types';
 
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
-const API_KEY = process.env.YOUTUBE_API_KEY;
 
 /**
  * YouTube API Service
@@ -19,7 +18,11 @@ export class YouTubeService {
   private apiKey: string;
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || API_KEY || '';
+    const finalApiKey = apiKey || process.env.YOUTUBE_API_KEY;
+    if (!finalApiKey) {
+      throw new Error('YOUTUBE_API_KEY environment variable is required');
+    }
+    this.apiKey = finalApiKey;
   }
 
   /**
