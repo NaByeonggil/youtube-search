@@ -18,14 +18,14 @@ const navItems: NavItem[] = [
   { name: '대본 생성', href: '/scripts', icon: '📝', step: 4 },
   { name: '캐릭터 설정', href: '/characters', icon: '👤', step: 5 },
   { name: '이미지 생성', href: '/images', icon: '🎨', step: 6 },
-  { name: '음성 합성', href: '/tts', icon: '🎙️', step: 7 },
+  // { name: '음성 합성', href: '/tts', icon: '🎙️', step: 7 },  // TODO: 페이지 구현 필요
   { name: 'AI 영상 생성', href: '/videos', icon: '🎬', step: 8 },
-  { name: '업로드', href: '/upload', icon: '📤', step: 9 },
+  // { name: '업로드', href: '/upload', icon: '📤', step: 9 },  // TODO: 페이지 구현 필요
 ];
 
 const bottomItems: NavItem[] = [
-  { name: 'A/B 테스트', href: '/ab-tests', icon: '🧪' },
-  { name: '성과 분석', href: '/analytics', icon: '📈' },
+  // { name: 'A/B 테스트', href: '/ab-tests', icon: '🧪' },  // TODO: 페이지 구현 필요
+  // { name: '성과 분석', href: '/analytics', icon: '📈' },  // TODO: 페이지 구현 필요
   { name: '설정', href: '/settings', icon: '⚙️' },
 ];
 
