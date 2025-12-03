@@ -8,8 +8,6 @@ import {
   getContentConfig,
 } from '@/types';
 
-const API_KEY = process.env.GEMINI_API_KEY || '***REMOVED***';
-
 /**
  * Gemini API Service
  * 댓글 분석 및 대본 생성 서비스
@@ -19,7 +17,11 @@ export class GeminiService {
   private model: any;
 
   constructor(apiKey?: string) {
-    this.genAI = new GoogleGenerativeAI(apiKey || API_KEY);
+    const finalApiKey = apiKey || process.env.GEMINI_API_KEY;
+    if (!finalApiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+    this.genAI = new GoogleGenerativeAI(finalApiKey);
     this.model = this.genAI.getGenerativeModel({ model: 'models/gemini-3-pro-preview' });
   }
 

@@ -3,8 +3,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import { ContentFormat } from '@/types';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-
 export interface VideoGenerationOptions {
   aspectRatio?: '16:9' | '9:16';
   duration?: number; // seconds (5-8 for current limits)
@@ -57,7 +55,11 @@ export class VideoGenerationService {
   private storagePath: string;
 
   constructor(apiKey?: string, storagePath?: string) {
-    this.genAI = new GoogleGenerativeAI(apiKey || GEMINI_API_KEY);
+    const finalApiKey = apiKey || process.env.GEMINI_API_KEY;
+    if (!finalApiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+    this.genAI = new GoogleGenerativeAI(finalApiKey);
 
     // 채팅용 모델 (이미지 분석, 프롬프트 생성)
     this.chatModel = this.genAI.getGenerativeModel({
@@ -261,9 +263,13 @@ Video specifications:
    */
   async checkVideoStatus(operationName: string): Promise<VideoGenerationResult> {
     try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('GEMINI_API_KEY environment variable is required');
+      }
       // Google AI API를 통해 operation 상태 확인
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${GEMINI_API_KEY}`
+        `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`
       );
 
       const data = await response.json();

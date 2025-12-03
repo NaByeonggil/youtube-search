@@ -3,8 +3,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import { ContentFormat, getContentConfig } from '@/types';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '***REMOVED***';
-
 /**
  * Image Generation Service
  * PRD 6단계: 이미지 생성 (실사 스타일)
@@ -17,7 +15,11 @@ export class ImageGenerationService {
   private storagePath: string;
 
   constructor(apiKey?: string, storagePath?: string) {
-    this.genAI = new GoogleGenerativeAI(apiKey || GEMINI_API_KEY);
+    const finalApiKey = apiKey || process.env.GEMINI_API_KEY;
+    if (!finalApiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+    this.genAI = new GoogleGenerativeAI(finalApiKey);
     this.model = this.genAI.getGenerativeModel({ model: 'models/gemini-3-pro-preview' });
     this.storagePath = storagePath || process.env.STORAGE_PATH || './storage';
   }
