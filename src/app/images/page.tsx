@@ -365,18 +365,21 @@ export default function ScriptToImagePage() {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-xl font-bold text-white">대본 → 이미지 자동 생성</h1>
-              <span className="text-sm text-slate-400 bg-slate-700 px-2 py-1 rounded">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-white truncate">
+                <span className="hidden sm:inline">대본 → 이미지 자동 생성</span>
+                <span className="sm:hidden">이미지 생성</span>
+              </h1>
+              <span className="hidden md:inline text-sm text-slate-400 bg-slate-700 px-2 py-1 rounded whitespace-nowrap">
                 Gemini 2.5 Flash Image
               </span>
             </div>
             {step !== 'input' && (
               <button
                 onClick={reset}
-                className="px-4 py-2 text-slate-300 hover:text-white border border-slate-600 rounded-lg hover:bg-slate-700"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm text-slate-300 hover:text-white border border-slate-600 rounded-lg hover:bg-slate-700 whitespace-nowrap"
               >
                 새로 시작
               </button>
@@ -385,14 +388,31 @@ export default function ScriptToImagePage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
         {/* 단계 표시 */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center gap-4">
+        <div className="mb-6 sm:mb-8">
+          {/* 모바일: 현재 단계만 표시 */}
+          <div className="sm:hidden flex items-center justify-center">
+            <div className="flex items-center bg-slate-800 px-4 py-2 rounded-full">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-purple-600 text-white">
+                {['input', 'settings', 'analyzing', 'generating', 'complete'].indexOf(step) + 1}
+              </div>
+              <span className="ml-2 text-sm text-white">
+                {step === 'input' && '대본 입력'}
+                {step === 'settings' && '설정'}
+                {step === 'analyzing' && '분석 중'}
+                {step === 'generating' && '생성 중'}
+                {step === 'complete' && '완료'}
+              </span>
+              <span className="ml-2 text-xs text-slate-400">/ 5</span>
+            </div>
+          </div>
+          {/* 태블릿 이상: 전체 단계 표시 */}
+          <div className="hidden sm:flex items-center justify-center gap-2 md:gap-4">
             {['input', 'settings', 'analyzing', 'generating', 'complete'].map((s, idx) => (
               <div key={s} className="flex items-center">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm font-medium ${
                     step === s
                       ? 'bg-purple-600 text-white'
                       : ['input', 'settings', 'analyzing', 'generating', 'complete'].indexOf(step) > idx
@@ -402,14 +422,14 @@ export default function ScriptToImagePage() {
                 >
                   {idx + 1}
                 </div>
-                <span className={`ml-2 text-sm ${step === s ? 'text-white' : 'text-slate-400'}`}>
-                  {s === 'input' && '대본 입력'}
+                <span className={`ml-1 md:ml-2 text-xs md:text-sm ${step === s ? 'text-white' : 'text-slate-400'}`}>
+                  {s === 'input' && '입력'}
                   {s === 'settings' && '설정'}
-                  {s === 'analyzing' && '분석 중'}
-                  {s === 'generating' && '생성 중'}
+                  {s === 'analyzing' && '분석'}
+                  {s === 'generating' && '생성'}
                   {s === 'complete' && '완료'}
                 </span>
-                {idx < 4 && <div className="w-8 h-px bg-slate-700 mx-2" />}
+                {idx < 4 && <div className="w-4 md:w-8 h-px bg-slate-700 mx-1 md:mx-2" />}
               </div>
             ))}
           </div>
@@ -595,26 +615,26 @@ export default function ScriptToImagePage() {
           <div className="space-y-6">
             {/* 요약 */}
             <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <div>
                   <h2 className="text-lg font-bold text-white">이미지 생성</h2>
                   <p className="text-sm text-slate-400">
                     총 {scenes.length}개 장면 | 캐릭터 {Object.keys(characters).length}명
                   </p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                   {step === 'complete' && (
-                    <>
+                    <div className="flex items-center gap-2 sm:gap-4 text-sm">
                       <span className="text-green-400">✅ {successCount}개 성공</span>
                       {failedCount > 0 && (
                         <span className="text-red-400">❌ {failedCount}개 실패</span>
                       )}
-                    </>
+                    </div>
                   )}
                   {!isGenerating && step === 'generating' && (
                     <button
                       onClick={startGeneration}
-                      className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                      className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm sm:text-base"
                     >
                       🎨 이미지 생성 시작
                     </button>
@@ -623,29 +643,29 @@ export default function ScriptToImagePage() {
                     <button
                       onClick={retryFailed}
                       disabled={isGenerating}
-                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                      className="px-3 sm:px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm"
                     >
-                      실패한 이미지 재시도
+                      재시도
                     </button>
                   )}
                   {step === 'complete' && successCount > 0 && (
                     <>
                       <button
                         onClick={downloadAll}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
                       >
-                        전체 다운로드
+                        다운로드
                       </button>
                       <button
                         onClick={saveToDatabase}
                         disabled={isSaving || saveResult?.success}
-                        className={`px-4 py-2 rounded-lg ${
+                        className={`px-3 sm:px-4 py-2 rounded-lg text-sm ${
                           saveResult?.success
                             ? 'bg-slate-600 text-slate-300 cursor-not-allowed'
                             : 'bg-blue-600 text-white hover:bg-blue-700'
                         } disabled:opacity-50`}
                       >
-                        {isSaving ? '저장 중...' : saveResult?.success ? '✓ 저장 완료' : '💾 DB에 저장'}
+                        {isSaving ? '저장 중...' : saveResult?.success ? '✓ 저장됨' : '💾 DB 저장'}
                       </button>
                     </>
                   )}
@@ -770,10 +790,14 @@ export default function ScriptToImagePage() {
         )}
 
         {/* 하단 정보 */}
-        <div className="mt-8 p-4 bg-slate-800/50 rounded-lg text-center text-sm text-slate-400">
-          <p>📌 PRD 스펙: 한국인 캐릭터 (한복 금지) | 캐릭터 일관성 유지 | 실패 시 자동 재시도</p>
-          <p className="mt-1">
+        <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-slate-800/50 rounded-lg text-center text-xs sm:text-sm text-slate-400">
+          <p className="hidden sm:block">📌 PRD 스펙: 한국인 캐릭터 (한복 금지) | 캐릭터 일관성 유지 | 실패 시 자동 재시도</p>
+          <p className="sm:hidden">📌 한국인 캐릭터 | 캐릭터 일관성 | 자동 재시도</p>
+          <p className="mt-1 hidden sm:block">
             API Rate Limit: RPM 500 | RPD 2,000 | 요청 간 0.2초 딜레이 적용
+          </p>
+          <p className="mt-1 sm:hidden">
+            Rate Limit: RPM 500 | RPD 2,000
           </p>
         </div>
       </div>
