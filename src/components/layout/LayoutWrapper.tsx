@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 interface LayoutWrapperProps {
   children: React.ReactNode;
@@ -44,7 +45,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   };
 
   return (
-    <>
+    <AuthProvider>
       <Header onMenuToggle={toggleSidebar} isSidebarOpen={isSidebarOpen} />
       <div className="flex">
         <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
@@ -52,6 +53,6 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
           {children}
         </main>
       </div>
-    </>
+    </AuthProvider>
   );
 }
