@@ -167,12 +167,28 @@ Veo 3.1 모델 특성:
   /**
    * Veo 3.1로 영상 생성
    * 프롬프트와 선택적 이미지를 기반으로 영상 생성
+   *
+   * NOTE: Veo 모델은 현재 Vertex AI를 통해서만 사용 가능합니다.
+   * 표준 Gemini API에서는 video responseModality를 지원하지 않습니다.
+   * Vertex AI 설정이 완료되면 이 기능을 사용할 수 있습니다.
    */
   async generateVideo(
     prompt: string,
     options: VideoGenerationOptions = {},
     referenceImage?: { base64: string; mimeType: string }
   ): Promise<VideoGenerationResult> {
+    // Veo 모델은 Vertex AI에서만 사용 가능
+    // 현재 표준 Gemini API에서는 video modality를 지원하지 않음
+    const VERTEX_AI_ENABLED = process.env.VERTEX_AI_PROJECT_ID && process.env.VERTEX_AI_LOCATION;
+
+    if (!VERTEX_AI_ENABLED) {
+      return {
+        success: false,
+        error: 'Veo 영상 생성은 Vertex AI 설정이 필요합니다. VERTEX_AI_PROJECT_ID와 VERTEX_AI_LOCATION 환경변수를 설정해주세요.',
+        status: 'FAILED',
+      };
+    }
+
     try {
       const aspectRatio = options.aspectRatio || '16:9';
       const duration = options.duration || 5;
@@ -203,7 +219,8 @@ Video specifications:
         });
       }
 
-      // Veo 모델로 영상 생성
+      // Vertex AI를 통한 Veo 모델 호출 (추후 구현)
+      // 현재는 표준 API로 시도 (대부분 실패할 것임)
       const result = await this.veoModel.generateContent({
         contents: [{ role: 'user', parts }],
         generationConfig: {
@@ -250,6 +267,16 @@ Video specifications:
       };
     } catch (error: any) {
       console.error('Veo video generation error:', error);
+
+      // Vertex AI 관련 오류 메시지 개선
+      if (error.message?.includes('responseModalities') || error.message?.includes('video')) {
+        return {
+          success: false,
+          error: 'Veo 영상 생성은 Google Cloud Vertex AI가 필요합니다. 현재 표준 Gemini API에서는 지원되지 않습니다.',
+          status: 'FAILED',
+        };
+      }
+
       return {
         success: false,
         error: error.message,
