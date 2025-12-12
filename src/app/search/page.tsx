@@ -56,6 +56,7 @@ export default function SearchPage() {
   const [meta, setMeta] = useState<SearchMeta | null>(null);
   const [error, setError] = useState('');
   const [analyzing, setAnalyzing] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
 
   const handleAnalyze = async (video: VideoResult) => {
     setAnalyzing(video.videoId);
@@ -203,76 +204,177 @@ export default function SearchPage() {
             ))}
           </div>
 
-          {/* 결과 테이블 */}
+          {/* 결과 헤더 및 뷰 토글 */}
           <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-            <div className="p-4 border-b border-slate-700">
+            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">
                 검색 결과 ({results.length}개)
               </h2>
+              <div className="flex items-center space-x-1 bg-slate-700 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('card')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center space-x-1 ${
+                    viewMode === 'card'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                  <span>카드</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center space-x-1 ${
+                    viewMode === 'table'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  <span>테이블</span>
+                </button>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-700/50">
-                  <tr className="text-left text-sm text-slate-400">
-                    <th className="px-4 py-3 font-medium">영상</th>
-                    <th className="px-4 py-3 font-medium text-right">조회수</th>
-                    <th className="px-4 py-3 font-medium text-right">구독자</th>
-                    <th className="px-4 py-3 font-medium text-center">터짐 지수</th>
-                    <th className="px-4 py-3 font-medium text-center">작업</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700">
-                  {results.map((video) => (
-                    <tr key={video.videoId} className="hover:bg-slate-700/30">
-                      <td className="px-4 py-4">
-                        <div className="flex items-start space-x-3">
-                          <img
-                            src={video.thumbnailUrl}
-                            alt={video.title}
-                            className="w-32 h-18 object-cover rounded-lg"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <a
-                              href={`https://youtube.com/watch?v=${video.videoId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm font-medium text-white hover:text-purple-400 line-clamp-2"
-                            >
-                              {video.title}
-                            </a>
-                            <p className="text-xs text-slate-400 mt-1">{video.channelTitle}</p>
-                            <p className="text-xs text-slate-500">{video.durationFormatted}</p>
-                          </div>
+
+            {/* 카드뷰 */}
+            {viewMode === 'card' && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {results.map((video) => (
+                  <div
+                    key={video.videoId}
+                    className="bg-slate-700/50 rounded-xl overflow-hidden border border-slate-600 hover:border-purple-500/50 transition-colors group"
+                  >
+                    {/* 썸네일 */}
+                    <div className="relative aspect-video">
+                      <img
+                        src={video.thumbnailUrl}
+                        alt={video.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${gradeColors[video.viralGrade]}`}>
+                          {video.viralGrade} {gradeLabels[video.viralGrade]}
+                        </span>
+                      </div>
+                      <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-0.5 rounded text-xs text-white">
+                        {video.durationFormatted}
+                      </div>
+                    </div>
+
+                    {/* 콘텐츠 */}
+                    <div className="p-4">
+                      <a
+                        href={`https://youtube.com/watch?v=${video.videoId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-white hover:text-purple-400 line-clamp-2 mb-2 block"
+                      >
+                        {video.title}
+                      </a>
+                      <p className="text-xs text-slate-400 mb-3">{video.channelTitle}</p>
+
+                      {/* 통계 */}
+                      <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                        <div className="bg-slate-800 rounded-lg p-2 text-center">
+                          <div className="text-white font-semibold">{formatNumber(video.viewCount)}</div>
+                          <div className="text-slate-500">조회수</div>
                         </div>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <span className="text-white font-medium">{formatNumber(video.viewCount)}</span>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <span className="text-slate-300">{formatNumber(video.subscriberCount)}</span>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className={`px-3 py-1 rounded-full text-sm font-bold ${gradeColors[video.viralGrade]}`}>
-                            {video.viralGrade}
-                          </span>
-                          <span className="text-xs text-slate-400 mt-1">{video.viralScore.toFixed(2)}</span>
+                        <div className="bg-slate-800 rounded-lg p-2 text-center">
+                          <div className="text-slate-300 font-semibold">{formatNumber(video.subscriberCount)}</div>
+                          <div className="text-slate-500">구독자</div>
                         </div>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <button
-                          onClick={() => handleAnalyze(video)}
-                          disabled={analyzing === video.videoId}
-                          className="px-3 py-1.5 text-xs font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {analyzing === video.videoId ? '이동 중...' : '분석하기'}
-                        </button>
-                      </td>
+                      </div>
+
+                      {/* 터짐 지수 */}
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs text-slate-400">터짐 지수</span>
+                        <span className="text-sm font-bold text-purple-400">{video.viralScore.toFixed(2)}</span>
+                      </div>
+
+                      {/* 분석 버튼 */}
+                      <button
+                        onClick={() => handleAnalyze(video)}
+                        disabled={analyzing === video.videoId}
+                        className="w-full py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {analyzing === video.videoId ? '이동 중...' : '분석하기'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 테이블뷰 */}
+            {viewMode === 'table' && (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-700/50">
+                    <tr className="text-left text-sm text-slate-400">
+                      <th className="px-4 py-3 font-medium">영상</th>
+                      <th className="px-4 py-3 font-medium text-right">조회수</th>
+                      <th className="px-4 py-3 font-medium text-right">구독자</th>
+                      <th className="px-4 py-3 font-medium text-center">터짐 지수</th>
+                      <th className="px-4 py-3 font-medium text-center">작업</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700">
+                    {results.map((video) => (
+                      <tr key={video.videoId} className="hover:bg-slate-700/30">
+                        <td className="px-4 py-4">
+                          <div className="flex items-start space-x-3">
+                            <img
+                              src={video.thumbnailUrl}
+                              alt={video.title}
+                              className="w-32 h-18 object-cover rounded-lg"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <a
+                                href={`https://youtube.com/watch?v=${video.videoId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-medium text-white hover:text-purple-400 line-clamp-2"
+                              >
+                                {video.title}
+                              </a>
+                              <p className="text-xs text-slate-400 mt-1">{video.channelTitle}</p>
+                              <p className="text-xs text-slate-500">{video.durationFormatted}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <span className="text-white font-medium">{formatNumber(video.viewCount)}</span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <span className="text-slate-300">{formatNumber(video.subscriberCount)}</span>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <div className="flex flex-col items-center">
+                            <span className={`px-3 py-1 rounded-full text-sm font-bold ${gradeColors[video.viralGrade]}`}>
+                              {video.viralGrade}
+                            </span>
+                            <span className="text-xs text-slate-400 mt-1">{video.viralScore.toFixed(2)}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <button
+                            onClick={() => handleAnalyze(video)}
+                            disabled={analyzing === video.videoId}
+                            className="px-3 py-1.5 text-xs font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {analyzing === video.videoId ? '이동 중...' : '분석하기'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}
