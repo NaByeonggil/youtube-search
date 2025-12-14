@@ -26,7 +26,16 @@ interface SidebarProps {
 
 const navItems: NavItem[] = [
   { name: '대시보드', href: '/', icon: '🏠' },
-  { name: '키워드 검색', href: '/search', icon: '🔍', step: 1 },
+  {
+    name: '키워드 검색',
+    href: '/search',
+    icon: '🔍',
+    step: 1,
+    subItems: [
+      { name: '검색하기', href: '/search', icon: '🔍' },
+      { name: '콘텐츠 아이디어', href: '/content-ideas/history', icon: '💡' },
+    ]
+  },
   { name: '영상 분석', href: '/projects', icon: '📊', step: 2 },
   {
     name: '댓글 분석',
@@ -56,6 +65,7 @@ const navItems: NavItem[] = [
     icon: '🎨',
     step: 7,
     subItems: [
+      { name: '채팅으로 생성', href: '/images/chat', icon: '💬' },
       { name: '대본 → 이미지', href: '/images', icon: '📝' },
       { name: '생성 기록', href: '/images/history', icon: '📂' },
     ]
@@ -92,7 +102,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  const [expandedItems, setExpandedItems] = useState<string[]>(['/analysis', '/scripts', '/images', '/settings', '/admin']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['/search', '/analysis', '/scripts', '/images', '/settings', '/admin']);
 
   const toggleExpand = (href: string) => {
     setExpandedItems(prev =>
