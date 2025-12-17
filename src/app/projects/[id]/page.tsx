@@ -241,7 +241,7 @@ export default function ProjectDetailPage() {
                       </td>
                       <td className="py-4 text-center">
                         <Badge variant="grade" grade={video.viral_grade as any}>
-                          {video.viral_grade} ({video.viral_score?.toFixed(2)})
+                          {video.viral_grade} ({video.viral_score != null ? Number(video.viral_score).toFixed(2) : '-'})
                         </Badge>
                       </td>
                       <td className="py-4 text-sm text-gray-500">

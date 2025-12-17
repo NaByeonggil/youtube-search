@@ -591,3 +591,144 @@ INSERT INTO templates (template_name, template_type, category, content_format, t
   '["SCENE_TYPE", "MOOD", "COLOR_TONE", "TIME_OF_DAY", "ASPECT_RATIO"]',
   '감성적인 분위기의 배경 이미지 생성용 프롬프트'
 );
+
+-- =====================================================
+-- 22. 대본 구조 분석 테이블 (script_structure_analysis)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS script_structure_analysis (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(300),
+    original_script LONGTEXT NOT NULL,
+    script_source ENUM('manual', 'youtube-caption', 'whisper') DEFAULT 'manual',
+    youtube_video_id VARCHAR(20),
+
+    -- 분석 결과 JSON
+    structure_sections JSON,
+    character_count JSON,
+    storytelling_techniques JSON,
+    hooks_analysis JSON,
+    improvements JSON,
+    planning_notes JSON,
+
+    -- 메타 정보
+    total_characters INT DEFAULT 0,
+    estimated_duration VARCHAR(50),
+    analysis_model VARCHAR(50) DEFAULT 'gemini-3-pro',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_youtube_video_id (youtube_video_id),
+    INDEX idx_created_at (created_at DESC),
+    INDEX idx_script_source (script_source)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 23. 콘텐츠 아이디어 워크플로우 테이블 (content_idea_workflows)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS content_idea_workflows (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    -- 소스 영상 정보
+    source_video_id VARCHAR(20) NOT NULL,
+    source_video_title VARCHAR(500) NOT NULL,
+    source_channel_name VARCHAR(200),
+    source_thumbnail_url VARCHAR(500),
+    content_format ENUM('short', 'long') DEFAULT 'long',
+
+    -- 댓글 분석 결과
+    total_comments_analyzed INT DEFAULT 0,
+    viewer_questions JSON,
+    pain_points JSON,
+    content_requests JSON,
+    related_topics JSON,
+    hot_topics JSON,
+
+    -- 선택된 콘텐츠 아이디어
+    selected_idea_title VARCHAR(500),
+    selected_idea_description TEXT,
+    selected_idea_target_audience VARCHAR(200),
+    selected_idea_viral_score VARCHAR(20),
+    selected_idea_format VARCHAR(20),
+    selected_idea_reasoning TEXT,
+
+    -- 대본 목차
+    outline_title VARCHAR(500),
+    outline_hook TEXT,
+    outline_duration VARCHAR(50),
+    outline_sections JSON,
+    outline_cta TEXT,
+    outline_thumbnail_idea TEXT,
+    outline_tags JSON,
+
+    -- 생성된 대본
+    generated_script_id BIGINT,
+    generated_script_full TEXT,
+
+    -- 상태
+    workflow_status ENUM('idea_selected', 'outline_created', 'script_generated', 'completed') DEFAULT 'idea_selected',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_source_video_id (source_video_id),
+    INDEX idx_workflow_status (workflow_status),
+    INDEX idx_created_at (created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 24. 이미지 생성 세션 테이블 (image_generation_sessions)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS image_generation_sessions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    project_id BIGINT,
+
+    -- 원본 대본
+    original_script LONGTEXT,
+
+    -- 파싱된 데이터 (JSON)
+    scenes_json JSON,
+    characters_json JSON,
+
+    -- 설정
+    aspect_ratio VARCHAR(10) DEFAULT '16:9',
+    style_name VARCHAR(50) DEFAULT '실사',
+    style_en VARCHAR(50) DEFAULT 'photorealistic',
+
+    -- 통계
+    total_scenes INT DEFAULT 0,
+    successful_scenes INT DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+    INDEX idx_project_id (project_id),
+    INDEX idx_created_at (created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 25. 생성된 이미지 테이블 (generated_images)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS generated_images (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_id BIGINT NOT NULL,
+
+    -- 장면 정보
+    scene_id INT NOT NULL,
+    scene_description TEXT,
+
+    -- 이미지 데이터
+    image_path VARCHAR(500),
+    image_base64 LONGTEXT,
+
+    -- 상태
+    generation_status ENUM('pending', 'generating', 'completed', 'failed') DEFAULT 'pending',
+    error_message TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (session_id) REFERENCES image_generation_sessions(id) ON DELETE CASCADE,
+    INDEX idx_session_id (session_id),
+    INDEX idx_scene_id (scene_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

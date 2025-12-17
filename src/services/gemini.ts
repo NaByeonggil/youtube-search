@@ -6,6 +6,9 @@ import {
   ContentSummary,
   CommentAnalysis,
   getContentConfig,
+  ContentIdeasResult,
+  ContentIdeaItem,
+  ScriptOutlineResult,
 } from '@/types';
 
 /**
@@ -204,6 +207,153 @@ ${conversationHistory}
 응답은 한국어로, 친근하고 전문적인 톤으로 작성해주세요.`;
 
     return await this.callAPI(prompt);
+  }
+
+  /**
+   * 댓글 기반 콘텐츠 아이디어 분석
+   * 시청자 댓글에서 새로운 콘텐츠 소재를 추출
+   */
+  async analyzeContentIdeas(
+    comments: string[],
+    videoTitle: string,
+    format: ContentFormat = 'long'
+  ): Promise<ContentIdeasResult> {
+    const prompt = `당신은 YouTube 콘텐츠 전략 전문가입니다.
+주어진 영상의 댓글들을 분석하여 새로운 콘텐츠 아이디어를 도출해주세요.
+
+## 원본 영상 제목
+${videoTitle}
+
+## 콘텐츠 형식
+${format === 'short' ? '숏폼 (60초 이내)' : '롱폼 (5-15분)'}
+
+## 분석할 댓글들 (${comments.length}개)
+${comments.slice(0, 100).map((c, i) => `${i + 1}. ${c}`).join('\n')}
+
+위 댓글들에서 다음을 분석해주세요:
+1. 시청자들이 궁금해하는 점 (질문, 요청)
+2. 시청자들의 pain point (불만, 어려움)
+3. 추가 콘텐츠 요청 사항
+4. 댓글에서 언급된 관련 주제
+5. 높은 참여도를 보이는 토픽
+
+이를 바탕으로 5개의 새로운 콘텐츠 아이디어를 제안해주세요.
+
+반드시 아래 JSON 형식으로만 응답해주세요 (다른 텍스트 없이 JSON만):
+{
+  "viewerQuestions": ["질문1", "질문2", "질문3"],
+  "painPoints": ["불만/어려움1", "불만/어려움2"],
+  "contentRequests": ["요청1", "요청2"],
+  "relatedTopics": ["주제1", "주제2", "주제3"],
+  "hotTopics": ["인기토픽1", "인기토픽2"],
+  "contentIdeas": [
+    {
+      "id": 1,
+      "title": "콘텐츠 제목",
+      "description": "콘텐츠 설명 (2-3문장)",
+      "targetAudience": "타겟 시청자",
+      "estimatedViralScore": "상/중/하",
+      "reasoning": "이 아이디어를 추천하는 이유",
+      "suggestedFormat": "숏폼/롱폼"
+    }
+  ]
+}`;
+
+    const response = await this.callAPI(prompt);
+
+    try {
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (error) {
+      console.error('Error parsing content ideas response:', error);
+    }
+
+    return {
+      viewerQuestions: [],
+      painPoints: [],
+      contentRequests: [],
+      relatedTopics: [],
+      hotTopics: [],
+      contentIdeas: [],
+    };
+  }
+
+  /**
+   * 대본 목차(아웃라인) 생성
+   * 선택한 콘텐츠 아이디어를 바탕으로 대본 구조 생성
+   */
+  async generateScriptOutline(
+    contentIdea: ContentIdeaItem,
+    format: ContentFormat = 'long',
+    additionalContext?: string
+  ): Promise<ScriptOutlineResult> {
+    const isShort = format === 'short';
+
+    const structureGuide = isShort
+      ? `숏폼 구조 (60초):
+- 훅 (0-3초): 강렬한 첫 문장
+- 핵심 (3-45초): 빠른 전달
+- 클로저 (45-60초): CTA/반전`
+      : `롱폼 구조 (5-15분):
+- 도입 (0-1분): 문제 공감, 예고
+- 본론 섹션들: 핵심 내용 전달
+- 결론 (마지막 1분): 요약, CTA`;
+
+    const prompt = `당신은 YouTube 대본 구성 전문가입니다.
+주어진 콘텐츠 아이디어를 바탕으로 상세한 대본 목차를 만들어주세요.
+
+## 콘텐츠 아이디어
+제목: ${contentIdea.title}
+설명: ${contentIdea.description}
+타겟: ${contentIdea.targetAudience}
+형식: ${format === 'short' ? '숏폼' : '롱폼'}
+
+## 참고할 구조
+${structureGuide}
+
+${additionalContext ? `## 추가 컨텍스트\n${additionalContext}` : ''}
+
+반드시 아래 JSON 형식으로만 응답해주세요 (다른 텍스트 없이 JSON만):
+{
+  "title": "영상 제목 (클릭을 유도하는 제목)",
+  "hook": "훅 문장 (첫 3초에 할 말)",
+  "estimatedDuration": ${isShort ? '"60초"' : '"8분"'},
+  "sections": [
+    {
+      "order": 1,
+      "title": "섹션 제목",
+      "duration": "예상 시간 (예: 0:00-0:30)",
+      "keyPoints": ["핵심 포인트1", "핵심 포인트2"],
+      "scriptHint": "이 섹션에서 다룰 내용 힌트"
+    }
+  ],
+  "callToAction": "CTA 문구",
+  "thumbnailIdea": "썸네일 아이디어",
+  "tags": ["태그1", "태그2", "태그3"]
+}`;
+
+    const response = await this.callAPI(prompt);
+
+    try {
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (error) {
+      console.error('Error parsing script outline response:', error);
+    }
+
+    return {
+      title: contentIdea.title,
+      hook: '',
+      estimatedDuration: isShort ? '60초' : '8분',
+      sections: [],
+      callToAction: '',
+      thumbnailIdea: '',
+      tags: [],
+    };
   }
 
   /**

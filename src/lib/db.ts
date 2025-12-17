@@ -468,6 +468,151 @@ export const db = {
       return queryOne(`SELECT * FROM platforms WHERE platform_code = ?`, [code]);
     },
   },
+
+  // Script Structure Analysis
+  scriptStructureAnalysis: {
+    async create(data: {
+      title?: string;
+      originalScript: string;
+      scriptSource?: 'manual' | 'youtube-caption' | 'whisper';
+      youtubeVideoId?: string;
+      structureSections?: unknown;
+      characterCount?: unknown;
+      storytellingTechniques?: unknown;
+      hooksAnalysis?: unknown;
+      improvements?: unknown;
+      planningNotes?: unknown;
+      totalCharacters?: number;
+      estimatedDuration?: string;
+      analysisModel?: string;
+    }) {
+      const result = await execute(
+        `INSERT INTO script_structure_analysis
+        (title, original_script, script_source, youtube_video_id,
+         structure_sections, character_count, storytelling_techniques,
+         hooks_analysis, improvements, planning_notes,
+         total_characters, estimated_duration, analysis_model)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          data.title || null,
+          data.originalScript,
+          data.scriptSource || 'manual',
+          data.youtubeVideoId || null,
+          JSON.stringify(data.structureSections || null),
+          JSON.stringify(data.characterCount || null),
+          JSON.stringify(data.storytellingTechniques || null),
+          JSON.stringify(data.hooksAnalysis || null),
+          JSON.stringify(data.improvements || null),
+          JSON.stringify(data.planningNotes || null),
+          data.totalCharacters || 0,
+          data.estimatedDuration || null,
+          data.analysisModel || 'gemini-3-pro'
+        ]
+      );
+      return result.insertId;
+    },
+
+    async findById(id: number) {
+      return queryOne(
+        `SELECT * FROM script_structure_analysis WHERE id = ?`,
+        [id]
+      );
+    },
+
+    async findAll(limit = 20, offset = 0, search?: string) {
+      let sql = `SELECT * FROM script_structure_analysis`;
+      const params: unknown[] = [];
+
+      if (search) {
+        sql += ` WHERE title LIKE ? OR original_script LIKE ?`;
+        const searchPattern = `%${search}%`;
+        params.push(searchPattern, searchPattern);
+      }
+
+      sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+      params.push(limit, offset);
+
+      return query(sql, params);
+    },
+
+    async count(search?: string) {
+      let sql = `SELECT COUNT(*) as total FROM script_structure_analysis`;
+      const params: unknown[] = [];
+
+      if (search) {
+        sql += ` WHERE title LIKE ? OR original_script LIKE ?`;
+        const searchPattern = `%${search}%`;
+        params.push(searchPattern, searchPattern);
+      }
+
+      const result = await query<(RowDataPacket & { total: number })[]>(sql, params);
+      return result[0]?.total || 0;
+    },
+
+    async delete(id: number) {
+      return execute(`DELETE FROM script_structure_analysis WHERE id = ?`, [id]);
+    },
+
+    async update(id: number, data: {
+      title?: string;
+      structureSections?: unknown;
+      characterCount?: unknown;
+      storytellingTechniques?: unknown;
+      hooksAnalysis?: unknown;
+      improvements?: unknown;
+      planningNotes?: unknown;
+      totalCharacters?: number;
+      estimatedDuration?: string;
+    }) {
+      const updates: string[] = [];
+      const params: unknown[] = [];
+
+      if (data.title !== undefined) {
+        updates.push('title = ?');
+        params.push(data.title);
+      }
+      if (data.structureSections !== undefined) {
+        updates.push('structure_sections = ?');
+        params.push(JSON.stringify(data.structureSections));
+      }
+      if (data.characterCount !== undefined) {
+        updates.push('character_count = ?');
+        params.push(JSON.stringify(data.characterCount));
+      }
+      if (data.storytellingTechniques !== undefined) {
+        updates.push('storytelling_techniques = ?');
+        params.push(JSON.stringify(data.storytellingTechniques));
+      }
+      if (data.hooksAnalysis !== undefined) {
+        updates.push('hooks_analysis = ?');
+        params.push(JSON.stringify(data.hooksAnalysis));
+      }
+      if (data.improvements !== undefined) {
+        updates.push('improvements = ?');
+        params.push(JSON.stringify(data.improvements));
+      }
+      if (data.planningNotes !== undefined) {
+        updates.push('planning_notes = ?');
+        params.push(JSON.stringify(data.planningNotes));
+      }
+      if (data.totalCharacters !== undefined) {
+        updates.push('total_characters = ?');
+        params.push(data.totalCharacters);
+      }
+      if (data.estimatedDuration !== undefined) {
+        updates.push('estimated_duration = ?');
+        params.push(data.estimatedDuration);
+      }
+
+      if (updates.length === 0) return null;
+
+      params.push(id);
+      return execute(
+        `UPDATE script_structure_analysis SET ${updates.join(', ')} WHERE id = ?`,
+        params
+      );
+    },
+  },
 };
 
 export default db;

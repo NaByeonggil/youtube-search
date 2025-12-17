@@ -253,6 +253,45 @@ export interface ClaudeScriptResponse {
   estimatedDuration: number;
 }
 
+// Content Ideas Analysis Types
+export interface ContentIdeaItem {
+  id: number;
+  title: string;
+  description: string;
+  targetAudience: string;
+  estimatedViralScore: '상' | '중' | '하';
+  reasoning: string;
+  suggestedFormat: '숏폼' | '롱폼';
+}
+
+export interface ContentIdeasResult {
+  viewerQuestions: string[];
+  painPoints: string[];
+  contentRequests: string[];
+  relatedTopics: string[];
+  hotTopics: string[];
+  contentIdeas: ContentIdeaItem[];
+}
+
+// Script Outline Types
+export interface ScriptSection {
+  order: number;
+  title: string;
+  duration: string;
+  keyPoints: string[];
+  scriptHint: string;
+}
+
+export interface ScriptOutlineResult {
+  title: string;
+  hook: string;
+  estimatedDuration: string;
+  sections: ScriptSection[];
+  callToAction: string;
+  thumbnailIdea: string;
+  tags: string[];
+}
+
 // Platform Types (Multi-platform support)
 export type PlatformCode = 'youtube_shorts' | 'youtube_long' | 'tiktok' | 'instagram_reels';
 

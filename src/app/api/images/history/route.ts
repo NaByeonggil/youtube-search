@@ -1,105 +1,114 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { getPool } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
-const HISTORY_FILE = path.join(process.cwd(), 'storage', 'image-history.json');
-
-interface GenerationHistory {
-  id: string;
-  createdAt: string;
-  aspectRatio: string;
-  style: string;
-  totalScenes: number;
-  successCount: number;
-  failedCount: number;
-  images: {
-    scene_id: number;
-    imagePath?: string;
-    imageBase64?: string;
-  }[];
+interface SessionRow extends RowDataPacket {
+  id: number;
+  project_id: number;
+  original_script: string;
+  scenes_json: string;
+  characters_json: string;
+  aspect_ratio: string;
+  style_name: string;
+  style_en: string;
+  total_scenes: number;
+  successful_scenes: number;
+  created_at: Date;
+  updated_at: Date;
 }
 
-async function ensureHistoryFile() {
-  try {
-    await fs.access(HISTORY_FILE);
-  } catch {
-    const dir = path.dirname(HISTORY_FILE);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(HISTORY_FILE, '[]', 'utf-8');
-  }
-}
-
-async function getHistory(): Promise<GenerationHistory[]> {
-  await ensureHistoryFile();
-  const content = await fs.readFile(HISTORY_FILE, 'utf-8');
-  return JSON.parse(content);
-}
-
-async function saveHistory(history: GenerationHistory[]) {
-  await ensureHistoryFile();
-  await fs.writeFile(HISTORY_FILE, JSON.stringify(history, null, 2), 'utf-8');
+interface ImageRow extends RowDataPacket {
+  id: number;
+  session_id: number;
+  scene_id: number;
+  scene_description: string;
+  image_path: string;
+  image_base64: string;
+  generation_status: string;
+  created_at: Date;
 }
 
 /**
- * GET /api/images/history - 생성 기록 조회
+ * GET /api/images/history - 이미지 생성 세션 목록 조회
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const history = await getHistory();
-    return NextResponse.json({
-      success: true,
-      data: history.sort((a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-    });
-  } catch (error: any) {
-    console.error('Failed to get history:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
-  }
-}
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * limit;
 
-/**
- * POST /api/images/history - 새 기록 저장
- */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { aspectRatio, style, scenes, results } = body;
+    const pool = getPool();
+    const connection = await pool.getConnection();
 
-    const history = await getHistory();
+    try {
+      // 세션 목록 조회
+      const [sessions] = await connection.execute<SessionRow[]>(
+        `SELECT * FROM image_generation_sessions
+         ORDER BY created_at DESC
+         LIMIT ? OFFSET ?`,
+        [limit, offset]
+      );
 
-    const newEntry: GenerationHistory = {
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      aspectRatio,
-      style,
-      totalScenes: scenes?.length || 0,
-      successCount: results?.filter((r: any) => r.status === 'success').length || 0,
-      failedCount: results?.filter((r: any) => r.status === 'failed').length || 0,
-      images: results?.filter((r: any) => r.status === 'success').map((r: any) => ({
-        scene_id: r.scene_id,
-        imageBase64: r.imageBase64?.slice(0, 1000), // 저장 공간 절약을 위해 truncate
-      })) || [],
-    };
+      // 총 개수 조회
+      const [countResult] = await connection.execute<RowDataPacket[]>(
+        'SELECT COUNT(*) as total FROM image_generation_sessions'
+      );
+      const total = countResult[0].total;
 
-    history.push(newEntry);
+      // 각 세션의 이미지 조회
+      const sessionsWithImages = await Promise.all(
+        sessions.map(async (session) => {
+          const [images] = await connection.execute<ImageRow[]>(
+            `SELECT * FROM generated_images
+             WHERE session_id = ?
+             ORDER BY scene_id`,
+            [session.id]
+          );
 
-    // 최대 50개까지만 보관
-    if (history.length > 50) {
-      history.splice(0, history.length - 50);
+          return {
+            id: session.id,
+            projectId: session.project_id,
+            originalScript: session.original_script || '',
+            scenes: JSON.parse(session.scenes_json || '[]'),
+            characters: JSON.parse(session.characters_json || '{}'),
+            aspectRatio: session.aspect_ratio,
+            style: {
+              name: session.style_name,
+              en: session.style_en,
+            },
+            totalScenes: session.total_scenes,
+            successCount: session.successful_scenes,
+            failedCount: session.total_scenes - session.successful_scenes,
+            createdAt: session.created_at,
+            updatedAt: session.updated_at,
+            images: images.map((img) => ({
+              id: img.id,
+              sceneId: img.scene_id,
+              description: img.scene_description,
+              imagePath: img.image_path,
+              imageBase64: img.image_base64,
+              status: img.generation_status,
+            })),
+          };
+        })
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: sessionsWithImages,
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } finally {
+      connection.release();
     }
-
-    await saveHistory(history);
-
-    return NextResponse.json({
-      success: true,
-      data: newEntry,
-    });
   } catch (error: any) {
-    console.error('Failed to save history:', error);
+    console.error('Failed to get image history:', error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }
@@ -112,8 +121,17 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE() {
   try {
-    await saveHistory([]);
-    return NextResponse.json({ success: true });
+    const pool = getPool();
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.execute('DELETE FROM generated_images');
+      await connection.execute('DELETE FROM image_generation_sessions');
+
+      return NextResponse.json({ success: true });
+    } finally {
+      connection.release();
+    }
   } catch (error: any) {
     console.error('Failed to clear history:', error);
     return NextResponse.json(

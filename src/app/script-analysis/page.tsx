@@ -232,6 +232,7 @@ export default function ScriptAnalysisPage() {
 
     setIsAnalyzing(true);
     setAnalysis(null);
+    setSavedId(null); // 새 분석 시 저장 상태 초기화
 
     try {
       const response = await fetch('/api/script/analyze', {
@@ -351,6 +352,56 @@ export default function ScriptAnalysisPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  // DB 저장 상태
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedId, setSavedId] = useState<number | null>(null);
+
+  // DB에 분석 결과 저장
+  const handleSaveToDb = async () => {
+    if (!analysis || !script.trim()) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/script/structure-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: script.substring(0, 100).trim() + (script.length > 100 ? '...' : ''),
+          originalScript: script,
+          scriptSource: transcriptSource || 'manual',
+          youtubeVideoId: videoInfo?.videoId,
+          analysis,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSavedId(data.data.id);
+        const successMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `✅ 분석 결과가 DB에 저장되었습니다. (ID: ${data.data.id})\n\n[분석 기록 보기](/script-analysis/history)에서 저장된 분석을 확인할 수 있습니다.`,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, successMessage]);
+      } else {
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+    } catch (error: any) {
+      console.error('DB 저장 오류:', error);
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `❌ DB 저장 중 오류가 발생했습니다: ${error.message}`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // 분석 결과를 텍스트로 포맷
@@ -874,9 +925,28 @@ ${result.planningNotes.thumbnailIdeas.map((t) => `- ${t}`).join('\n')}
                 disabled={!analysis}
                 className="flex-1 py-2 px-4 border border-[#2a2a2a] text-white rounded-lg text-sm hover:bg-[#1a1a1a] disabled:text-[#555555] disabled:cursor-not-allowed transition-colors"
               >
-                텍스트 파일 저장
+                파일 저장
               </button>
             </div>
+            {/* DB 저장 버튼 */}
+            <button
+              onClick={handleSaveToDb}
+              disabled={!analysis || isSaving || savedId !== null}
+              className={`w-full py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${
+                savedId !== null
+                  ? 'bg-green-600 text-white cursor-default'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-[#333333] disabled:text-[#666666] disabled:cursor-not-allowed'
+              }`}
+            >
+              {isSaving ? '저장 중...' : savedId !== null ? `✓ 저장됨 (ID: ${savedId})` : '💾 DB에 저장'}
+            </button>
+            {/* 분석 기록 보기 링크 */}
+            <a
+              href="/script-analysis/history"
+              className="block w-full py-2 px-4 border border-[#2a2a2a] text-center text-white rounded-lg text-sm hover:bg-[#1a1a1a] transition-colors"
+            >
+              📋 분석 기록 보기
+            </a>
           </div>
 
           {/* 채팅 입력 */}

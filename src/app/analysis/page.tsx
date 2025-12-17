@@ -60,6 +60,7 @@ function AnalysisContent() {
   const [error, setError] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(null);
   const [expandedSection, setExpandedSection] = useState<'positive' | 'negative' | 'improvements' | null>(null);
+  const [commentViewMode, setCommentViewMode] = useState<'card' | 'table'>('card');
 
   // Check for video ID from URL params and sessionStorage
   useEffect(() => {
@@ -270,13 +271,13 @@ function AnalysisContent() {
       {selectedVideo && (
         <Card className="mb-6">
           <CardContent>
-            <div className="flex items-start space-x-4">
+            <div className="flex flex-col">
               <img
                 src={selectedVideo.thumbnailUrl}
                 alt={selectedVideo.title}
-                className="w-40 h-24 object-cover rounded-lg"
+                className="w-full aspect-video object-cover rounded-lg mb-4"
               />
-              <div className="flex-1">
+              <div>
                 <h3 className="text-lg font-semibold text-white mb-1">{selectedVideo.title}</h3>
                 <p className="text-sm text-slate-400 mb-2">{selectedVideo.channelTitle}</p>
                 <div className="flex items-center space-x-4 text-sm">
@@ -432,34 +433,97 @@ function AnalysisContent() {
               <div className="border-t border-slate-700 px-6 py-4" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm text-slate-400">대표 댓글 (좋아요 순 상위 10개)</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      const text = analysis.positive.comments.slice(0, 10).map(c => `[${c.author}] ${c.text}`).join('\n\n');
-                      copyToClipboard(text);
-                    }}
-                  >
-                    복사
-                  </Button>
-                </div>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {analysis.positive.comments.slice(0, 10).map((comment, idx) => (
-                    <div key={comment.id} className="p-3 bg-slate-700/50 rounded-lg border border-green-500/20">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-green-400 font-bold text-sm">#{idx + 1}</span>
-                          <span className="font-medium text-slate-300">{comment.author}</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-xs text-slate-500">
-                          <span>👍 {comment.likeCount}</span>
-                          <span>{formatDate(comment.publishedAt)}</span>
-                        </div>
-                      </div>
-                      <p className="text-slate-200 text-sm">{comment.text}</p>
+                  <div className="flex items-center space-x-2">
+                    {/* 뷰 토글 버튼 */}
+                    <div className="flex items-center space-x-1 bg-slate-700 rounded-lg p-1">
+                      <button
+                        onClick={() => setCommentViewMode('card')}
+                        className={`px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center space-x-1 ${
+                          commentViewMode === 'card'
+                            ? 'bg-green-600 text-white'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        <span>카드</span>
+                      </button>
+                      <button
+                        onClick={() => setCommentViewMode('table')}
+                        className={`px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center space-x-1 ${
+                          commentViewMode === 'table'
+                            ? 'bg-green-600 text-white'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                        <span>테이블</span>
+                      </button>
                     </div>
-                  ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const text = analysis.positive.comments.slice(0, 10).map(c => `[${c.author}] ${c.text}`).join('\n\n');
+                        copyToClipboard(text);
+                      }}
+                    >
+                      복사
+                    </Button>
+                  </div>
                 </div>
+
+                {/* 카드뷰 */}
+                {commentViewMode === 'card' && (
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                    {analysis.positive.comments.slice(0, 10).map((comment, idx) => (
+                      <div key={comment.id} className="p-3 bg-slate-700/50 rounded-lg border border-green-500/20">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-green-400 font-bold text-sm">#{idx + 1}</span>
+                            <span className="font-medium text-slate-300">{comment.author}</span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-xs text-slate-500">
+                            <span>👍 {comment.likeCount}</span>
+                            <span>{formatDate(comment.publishedAt)}</span>
+                          </div>
+                        </div>
+                        <p className="text-slate-200 text-sm">{comment.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 테이블뷰 */}
+                {commentViewMode === 'table' && (
+                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="bg-slate-700/50 sticky top-0">
+                        <tr className="text-left text-xs text-slate-400">
+                          <th className="px-3 py-2 font-medium w-10">#</th>
+                          <th className="px-3 py-2 font-medium w-24">작성자</th>
+                          <th className="px-3 py-2 font-medium">댓글 내용</th>
+                          <th className="px-3 py-2 font-medium text-right w-16">좋아요</th>
+                          <th className="px-3 py-2 font-medium text-right w-20">작성일</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-700">
+                        {analysis.positive.comments.slice(0, 10).map((comment, idx) => (
+                          <tr key={comment.id} className="hover:bg-slate-700/30">
+                            <td className="px-3 py-2 text-green-400 font-bold text-sm">{idx + 1}</td>
+                            <td className="px-3 py-2 text-slate-300 text-sm truncate max-w-[100px]">{comment.author}</td>
+                            <td className="px-3 py-2 text-slate-200 text-sm">{comment.text}</td>
+                            <td className="px-3 py-2 text-right text-slate-400 text-sm">{comment.likeCount}</td>
+                            <td className="px-3 py-2 text-right text-slate-500 text-xs">{formatDate(comment.publishedAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </Card>
@@ -504,38 +568,103 @@ function AnalysisContent() {
               <div className="border-t border-slate-700 px-6 py-4" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm text-slate-400">대표 댓글 (좋아요 순 상위 10개)</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      const text = analysis.negative.comments.slice(0, 10).map(c => `[${c.author}] ${c.text}`).join('\n\n');
-                      copyToClipboard(text);
-                    }}
-                  >
-                    복사
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    {/* 뷰 토글 버튼 */}
+                    <div className="flex items-center space-x-1 bg-slate-700 rounded-lg p-1">
+                      <button
+                        onClick={() => setCommentViewMode('card')}
+                        className={`px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center space-x-1 ${
+                          commentViewMode === 'card'
+                            ? 'bg-red-600 text-white'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        <span>카드</span>
+                      </button>
+                      <button
+                        onClick={() => setCommentViewMode('table')}
+                        className={`px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center space-x-1 ${
+                          commentViewMode === 'table'
+                            ? 'bg-red-600 text-white'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                        <span>테이블</span>
+                      </button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const text = analysis.negative.comments.slice(0, 10).map(c => `[${c.author}] ${c.text}`).join('\n\n');
+                        copyToClipboard(text);
+                      }}
+                    >
+                      복사
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {analysis.negative.comments.length > 0 ? (
-                    analysis.negative.comments.slice(0, 10).map((comment, idx) => (
-                      <div key={comment.id} className="p-3 bg-slate-700/50 rounded-lg border border-red-500/20">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-red-400 font-bold text-sm">#{idx + 1}</span>
-                            <span className="font-medium text-slate-300">{comment.author}</span>
+
+                {analysis.negative.comments.length > 0 ? (
+                  <>
+                    {/* 카드뷰 */}
+                    {commentViewMode === 'card' && (
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                        {analysis.negative.comments.slice(0, 10).map((comment, idx) => (
+                          <div key={comment.id} className="p-3 bg-slate-700/50 rounded-lg border border-red-500/20">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-red-400 font-bold text-sm">#{idx + 1}</span>
+                                <span className="font-medium text-slate-300">{comment.author}</span>
+                              </div>
+                              <div className="flex items-center space-x-2 text-xs text-slate-500">
+                                <span>👍 {comment.likeCount}</span>
+                                <span>{formatDate(comment.publishedAt)}</span>
+                              </div>
+                            </div>
+                            <p className="text-slate-200 text-sm">{comment.text}</p>
                           </div>
-                          <div className="flex items-center space-x-2 text-xs text-slate-500">
-                            <span>👍 {comment.likeCount}</span>
-                            <span>{formatDate(comment.publishedAt)}</span>
-                          </div>
-                        </div>
-                        <p className="text-slate-200 text-sm">{comment.text}</p>
+                        ))}
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-slate-500 text-center py-4">부정적인 댓글이 없습니다.</p>
-                  )}
-                </div>
+                    )}
+
+                    {/* 테이블뷰 */}
+                    {commentViewMode === 'table' && (
+                      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        <table className="w-full">
+                          <thead className="bg-slate-700/50 sticky top-0">
+                            <tr className="text-left text-xs text-slate-400">
+                              <th className="px-3 py-2 font-medium w-10">#</th>
+                              <th className="px-3 py-2 font-medium w-24">작성자</th>
+                              <th className="px-3 py-2 font-medium">댓글 내용</th>
+                              <th className="px-3 py-2 font-medium text-right w-16">좋아요</th>
+                              <th className="px-3 py-2 font-medium text-right w-20">작성일</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-700">
+                            {analysis.negative.comments.slice(0, 10).map((comment, idx) => (
+                              <tr key={comment.id} className="hover:bg-slate-700/30">
+                                <td className="px-3 py-2 text-red-400 font-bold text-sm">{idx + 1}</td>
+                                <td className="px-3 py-2 text-slate-300 text-sm truncate max-w-[100px]">{comment.author}</td>
+                                <td className="px-3 py-2 text-slate-200 text-sm">{comment.text}</td>
+                                <td className="px-3 py-2 text-right text-slate-400 text-sm">{comment.likeCount}</td>
+                                <td className="px-3 py-2 text-right text-slate-500 text-xs">{formatDate(comment.publishedAt)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-slate-500 text-center py-4">부정적인 댓글이 없습니다.</p>
+                )}
               </div>
             )}
           </Card>
@@ -584,38 +713,103 @@ function AnalysisContent() {
               <div className="border-t border-slate-700 px-6 py-4" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm text-slate-400">관련 댓글 (좋아요 순 상위 10개)</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      const text = analysis.improvements.comments.slice(0, 10).map(c => `[${c.author}] ${c.text}`).join('\n\n');
-                      copyToClipboard(text);
-                    }}
-                  >
-                    복사
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    {/* 뷰 토글 버튼 */}
+                    <div className="flex items-center space-x-1 bg-slate-700 rounded-lg p-1">
+                      <button
+                        onClick={() => setCommentViewMode('card')}
+                        className={`px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center space-x-1 ${
+                          commentViewMode === 'card'
+                            ? 'bg-yellow-600 text-white'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        <span>카드</span>
+                      </button>
+                      <button
+                        onClick={() => setCommentViewMode('table')}
+                        className={`px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center space-x-1 ${
+                          commentViewMode === 'table'
+                            ? 'bg-yellow-600 text-white'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                        <span>테이블</span>
+                      </button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const text = analysis.improvements.comments.slice(0, 10).map(c => `[${c.author}] ${c.text}`).join('\n\n');
+                        copyToClipboard(text);
+                      }}
+                    >
+                      복사
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {analysis.improvements.comments.length > 0 ? (
-                    analysis.improvements.comments.slice(0, 10).map((comment, idx) => (
-                      <div key={comment.id} className="p-3 bg-slate-700/50 rounded-lg border border-yellow-500/20">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-yellow-400 font-bold text-sm">#{idx + 1}</span>
-                            <span className="font-medium text-slate-300">{comment.author}</span>
+
+                {analysis.improvements.comments.length > 0 ? (
+                  <>
+                    {/* 카드뷰 */}
+                    {commentViewMode === 'card' && (
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                        {analysis.improvements.comments.slice(0, 10).map((comment, idx) => (
+                          <div key={comment.id} className="p-3 bg-slate-700/50 rounded-lg border border-yellow-500/20">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-yellow-400 font-bold text-sm">#{idx + 1}</span>
+                                <span className="font-medium text-slate-300">{comment.author}</span>
+                              </div>
+                              <div className="flex items-center space-x-2 text-xs text-slate-500">
+                                <span>👍 {comment.likeCount}</span>
+                                <span>{formatDate(comment.publishedAt)}</span>
+                              </div>
+                            </div>
+                            <p className="text-slate-200 text-sm">{comment.text}</p>
                           </div>
-                          <div className="flex items-center space-x-2 text-xs text-slate-500">
-                            <span>👍 {comment.likeCount}</span>
-                            <span>{formatDate(comment.publishedAt)}</span>
-                          </div>
-                        </div>
-                        <p className="text-slate-200 text-sm">{comment.text}</p>
+                        ))}
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-slate-500 text-center py-4">개선 요청 댓글이 없습니다.</p>
-                  )}
-                </div>
+                    )}
+
+                    {/* 테이블뷰 */}
+                    {commentViewMode === 'table' && (
+                      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        <table className="w-full">
+                          <thead className="bg-slate-700/50 sticky top-0">
+                            <tr className="text-left text-xs text-slate-400">
+                              <th className="px-3 py-2 font-medium w-10">#</th>
+                              <th className="px-3 py-2 font-medium w-24">작성자</th>
+                              <th className="px-3 py-2 font-medium">댓글 내용</th>
+                              <th className="px-3 py-2 font-medium text-right w-16">좋아요</th>
+                              <th className="px-3 py-2 font-medium text-right w-20">작성일</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-700">
+                            {analysis.improvements.comments.slice(0, 10).map((comment, idx) => (
+                              <tr key={comment.id} className="hover:bg-slate-700/30">
+                                <td className="px-3 py-2 text-yellow-400 font-bold text-sm">{idx + 1}</td>
+                                <td className="px-3 py-2 text-slate-300 text-sm truncate max-w-[100px]">{comment.author}</td>
+                                <td className="px-3 py-2 text-slate-200 text-sm">{comment.text}</td>
+                                <td className="px-3 py-2 text-right text-slate-400 text-sm">{comment.likeCount}</td>
+                                <td className="px-3 py-2 text-right text-slate-500 text-xs">{formatDate(comment.publishedAt)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-slate-500 text-center py-4">개선 요청 댓글이 없습니다.</p>
+                )}
               </div>
             )}
           </Card>

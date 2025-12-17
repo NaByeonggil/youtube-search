@@ -25,6 +25,45 @@ interface SearchMeta {
   gradeDistribution: Record<string, number>;
 }
 
+interface ContentIdeaItem {
+  id: number;
+  title: string;
+  description: string;
+  targetAudience: string;
+  estimatedViralScore: '상' | '중' | '하';
+  reasoning: string;
+  suggestedFormat: '숏폼' | '롱폼';
+}
+
+interface ContentIdeasResult {
+  viewerQuestions: string[];
+  painPoints: string[];
+  contentRequests: string[];
+  relatedTopics: string[];
+  hotTopics: string[];
+  contentIdeas: ContentIdeaItem[];
+}
+
+interface ScriptSection {
+  order: number;
+  title: string;
+  duration: string;
+  keyPoints: string[];
+  scriptHint: string;
+}
+
+interface ScriptOutlineResult {
+  title: string;
+  hook: string;
+  estimatedDuration: string;
+  sections: ScriptSection[];
+  callToAction: string;
+  thumbnailIdea: string;
+  tags: string[];
+}
+
+type WorkflowStep = 'idle' | 'collecting' | 'analyzing' | 'ideas' | 'outline';
+
 const gradeColors: Record<string, string> = {
   S: 'bg-red-500 text-white',
   A: 'bg-orange-500 text-white',
@@ -39,6 +78,12 @@ const gradeLabels: Record<string, string> = {
   B: '성공',
   C: '평균',
   D: '저조',
+};
+
+const viralScoreColors: Record<string, string> = {
+  상: 'text-green-400',
+  중: 'text-yellow-400',
+  하: 'text-red-400',
 };
 
 function formatNumber(num: number): string {
@@ -58,6 +103,15 @@ export default function SearchPage() {
   const [analyzing, setAnalyzing] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
 
+  // Content Ideas Workflow State
+  const [showIdeaModal, setShowIdeaModal] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<VideoResult | null>(null);
+  const [workflowStep, setWorkflowStep] = useState<WorkflowStep>('idle');
+  const [contentIdeas, setContentIdeas] = useState<ContentIdeasResult | null>(null);
+  const [selectedIdea, setSelectedIdea] = useState<ContentIdeaItem | null>(null);
+  const [scriptOutline, setScriptOutline] = useState<ScriptOutlineResult | null>(null);
+  const [workflowError, setWorkflowError] = useState('');
+
   const handleAnalyze = async (video: VideoResult) => {
     setAnalyzing(video.videoId);
 
@@ -76,6 +130,148 @@ export default function SearchPage() {
 
     // Navigate to analysis page with video ID
     router.push(`/analysis?videoId=${video.videoId}`);
+  };
+
+  const handleContentIdeas = async (video: VideoResult) => {
+    setSelectedVideo(video);
+    setShowIdeaModal(true);
+    setWorkflowStep('collecting');
+    setWorkflowError('');
+    setContentIdeas(null);
+    setSelectedIdea(null);
+    setScriptOutline(null);
+
+    try {
+      // Step 1: Analyze content ideas from comments
+      setWorkflowStep('analyzing');
+      const response = await fetch('/api/analyze/content-ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId: video.videoId,
+          videoTitle: video.title,
+          format: format,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setContentIdeas(data.data);
+        setWorkflowStep('ideas');
+      } else {
+        setWorkflowError(data.error || '콘텐츠 아이디어 분석에 실패했습니다.');
+        setWorkflowStep('idle');
+      }
+    } catch (err) {
+      setWorkflowError('분석 중 오류가 발생했습니다.');
+      setWorkflowStep('idle');
+    }
+  };
+
+  const handleSelectIdea = async (idea: ContentIdeaItem) => {
+    setSelectedIdea(idea);
+    setWorkflowStep('analyzing');
+    setWorkflowError('');
+
+    try {
+      const response = await fetch('/api/scripts/outline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contentIdea: idea,
+          format: idea.suggestedFormat === '숏폼' ? 'short' : 'long',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setScriptOutline(data.data.outline);
+        setWorkflowStep('outline');
+      } else {
+        setWorkflowError(data.error || '대본 목차 생성에 실패했습니다.');
+        setWorkflowStep('ideas');
+      }
+    } catch (err) {
+      setWorkflowError('목차 생성 중 오류가 발생했습니다.');
+      setWorkflowStep('ideas');
+    }
+  };
+
+  const handleGenerateScript = async () => {
+    if (!scriptOutline || !selectedIdea || !selectedVideo) return;
+
+    const workflowFormat = selectedIdea.suggestedFormat === '숏폼' ? 'short' : 'long';
+
+    // Save workflow to database
+    try {
+      const response = await fetch('/api/content-ideas/workflow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceVideo: {
+            videoId: selectedVideo.videoId,
+            title: selectedVideo.title,
+            channelTitle: selectedVideo.channelTitle,
+            thumbnailUrl: selectedVideo.thumbnailUrl,
+          },
+          contentIdeas: contentIdeas ? {
+            viewerQuestions: contentIdeas.viewerQuestions,
+            painPoints: contentIdeas.painPoints,
+            contentRequests: contentIdeas.contentRequests,
+            relatedTopics: contentIdeas.relatedTopics,
+            hotTopics: contentIdeas.hotTopics,
+          } : null,
+          selectedIdea: {
+            title: selectedIdea.title,
+            description: selectedIdea.description,
+            targetAudience: selectedIdea.targetAudience,
+            estimatedViralScore: selectedIdea.estimatedViralScore,
+            suggestedFormat: selectedIdea.suggestedFormat,
+            reasoning: selectedIdea.reasoning,
+          },
+          outline: {
+            title: scriptOutline.title,
+            hook: scriptOutline.hook,
+            estimatedDuration: scriptOutline.estimatedDuration,
+            sections: scriptOutline.sections,
+            callToAction: scriptOutline.callToAction,
+            thumbnailIdea: scriptOutline.thumbnailIdea,
+            tags: scriptOutline.tags,
+          },
+          format: workflowFormat,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        console.log('Workflow saved with ID:', data.data.id);
+      }
+    } catch (err) {
+      console.error('Failed to save workflow:', err);
+    }
+
+    // Store data for script generation page
+    sessionStorage.setItem('scriptOutline', JSON.stringify({
+      outline: scriptOutline,
+      contentIdea: selectedIdea,
+      sourceVideo: selectedVideo,
+      format: workflowFormat,
+    }));
+
+    // Navigate to script generation page
+    router.push('/scripts');
+  };
+
+  const closeModal = () => {
+    setShowIdeaModal(false);
+    setWorkflowStep('idle');
+    setSelectedVideo(null);
+    setContentIdeas(null);
+    setSelectedIdea(null);
+    setScriptOutline(null);
+    setWorkflowError('');
   };
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -295,14 +491,23 @@ export default function SearchPage() {
                         <span className="text-sm font-bold text-purple-400">{video.viralScore.toFixed(2)}</span>
                       </div>
 
-                      {/* 분석 버튼 */}
-                      <button
-                        onClick={() => handleAnalyze(video)}
-                        disabled={analyzing === video.videoId}
-                        className="w-full py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {analyzing === video.videoId ? '이동 중...' : '분석하기'}
-                      </button>
+                      {/* 버튼들 */}
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => handleAnalyze(video)}
+                          disabled={analyzing === video.videoId}
+                          className="w-full py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {analyzing === video.videoId ? '이동 중...' : '분석하기'}
+                        </button>
+                        <button
+                          onClick={() => handleContentIdeas(video)}
+                          className="w-full py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center space-x-1"
+                        >
+                          <span>💡</span>
+                          <span>소재 추천받기</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -361,13 +566,21 @@ export default function SearchPage() {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-center">
-                          <button
-                            onClick={() => handleAnalyze(video)}
-                            disabled={analyzing === video.videoId}
-                            className="px-3 py-1.5 text-xs font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {analyzing === video.videoId ? '이동 중...' : '분석하기'}
-                          </button>
+                          <div className="flex flex-col space-y-1">
+                            <button
+                              onClick={() => handleAnalyze(video)}
+                              disabled={analyzing === video.videoId}
+                              className="px-3 py-1.5 text-xs font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {analyzing === video.videoId ? '이동 중...' : '분석하기'}
+                            </button>
+                            <button
+                              onClick={() => handleContentIdeas(video)}
+                              className="px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                            >
+                              💡 소재 추천
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -387,6 +600,227 @@ export default function SearchPage() {
           <p className="text-slate-400">
             YouTube 영상을 검색하고 터짐 지수(조회수/구독자)를 분석합니다.
           </p>
+        </div>
+      )}
+
+      {/* 콘텐츠 아이디어 모달 */}
+      {showIdeaModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* 모달 헤더 */}
+            <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white">💡 콘텐츠 소재 추천</h2>
+                {selectedVideo && (
+                  <p className="text-sm text-slate-400 mt-1 line-clamp-1">{selectedVideo.title}</p>
+                )}
+              </div>
+              <button
+                onClick={closeModal}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 모달 콘텐츠 */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* 에러 메시지 */}
+              {workflowError && (
+                <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 mb-6">
+                  <p className="text-red-400">{workflowError}</p>
+                </div>
+              )}
+
+              {/* 로딩 상태 */}
+              {(workflowStep === 'collecting' || workflowStep === 'analyzing') && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mb-4"></div>
+                  <p className="text-white font-medium">
+                    {workflowStep === 'collecting' ? '댓글 수집 중...' : '콘텐츠 아이디어 분석 중...'}
+                  </p>
+                  <p className="text-slate-400 text-sm mt-2">잠시만 기다려주세요</p>
+                </div>
+              )}
+
+              {/* 콘텐츠 아이디어 목록 */}
+              {workflowStep === 'ideas' && contentIdeas && (
+                <div className="space-y-6">
+                  {/* 분석 결과 요약 */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-slate-700/50 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-purple-400">{contentIdeas.viewerQuestions.length}</div>
+                      <div className="text-xs text-slate-400">시청자 질문</div>
+                    </div>
+                    <div className="bg-slate-700/50 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-red-400">{contentIdeas.painPoints.length}</div>
+                      <div className="text-xs text-slate-400">Pain Points</div>
+                    </div>
+                    <div className="bg-slate-700/50 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-emerald-400">{contentIdeas.contentRequests.length}</div>
+                      <div className="text-xs text-slate-400">콘텐츠 요청</div>
+                    </div>
+                    <div className="bg-slate-700/50 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-yellow-400">{contentIdeas.hotTopics.length}</div>
+                      <div className="text-xs text-slate-400">인기 토픽</div>
+                    </div>
+                  </div>
+
+                  {/* 키워드 태그들 */}
+                  {contentIdeas.hotTopics.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-slate-300 mb-2">🔥 인기 토픽</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {contentIdeas.hotTopics.map((topic, idx) => (
+                          <span key={idx} className="px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-full text-sm">
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 콘텐츠 아이디어 카드들 */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">추천 콘텐츠 아이디어</h3>
+                    <div className="space-y-4">
+                      {contentIdeas.contentIdeas.map((idea) => (
+                        <div
+                          key={idea.id}
+                          className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-emerald-500/50 transition-colors cursor-pointer"
+                          onClick={() => handleSelectIdea(idea)}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="text-lg font-semibold text-white">{idea.title}</h4>
+                            <div className="flex items-center space-x-2">
+                              <span className={`text-sm font-bold ${viralScoreColors[idea.estimatedViralScore]}`}>
+                                {idea.estimatedViralScore === '상' ? '🔥 높음' : idea.estimatedViralScore === '중' ? '⚡ 보통' : '💤 낮음'}
+                              </span>
+                              <span className="px-2 py-1 bg-slate-600 rounded text-xs text-slate-300">
+                                {idea.suggestedFormat}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-slate-300 text-sm mb-3">{idea.description}</p>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">타겟: {idea.targetAudience}</span>
+                            <button className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                              이 아이디어로 대본 만들기 →
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-3 italic">💡 {idea.reasoning}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 대본 목차 */}
+              {workflowStep === 'outline' && scriptOutline && selectedIdea && (
+                <div className="space-y-6">
+                  {/* 뒤로가기 */}
+                  <button
+                    onClick={() => setWorkflowStep('ideas')}
+                    className="flex items-center space-x-1 text-slate-400 hover:text-white transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span className="text-sm">아이디어 목록으로</span>
+                  </button>
+
+                  {/* 대본 정보 */}
+                  <div className="bg-gradient-to-r from-emerald-600/20 to-purple-600/20 rounded-xl p-6 border border-emerald-500/30">
+                    <h3 className="text-xl font-bold text-white mb-2">{scriptOutline.title}</h3>
+                    <div className="flex items-center space-x-4 text-sm text-slate-300 mb-4">
+                      <span>⏱️ {scriptOutline.estimatedDuration}</span>
+                      <span>📝 {scriptOutline.sections.length}개 섹션</span>
+                    </div>
+                    <div className="bg-slate-800/50 rounded-lg p-4">
+                      <div className="text-xs text-slate-400 mb-1">🎯 훅 (첫 문장)</div>
+                      <p className="text-white font-medium">{scriptOutline.hook}</p>
+                    </div>
+                  </div>
+
+                  {/* 섹션 목록 */}
+                  <div>
+                    <h4 className="text-lg font-semibold text-white mb-4">대본 구조</h4>
+                    <div className="space-y-3">
+                      {scriptOutline.sections.map((section) => (
+                        <div key={section.order} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                {section.order}
+                              </span>
+                              <span className="font-medium text-white">{section.title}</span>
+                            </div>
+                            <span className="text-xs text-slate-400">{section.duration}</span>
+                          </div>
+                          <div className="ml-8">
+                            <ul className="space-y-1 mb-2">
+                              {section.keyPoints.map((point, idx) => (
+                                <li key={idx} className="text-sm text-slate-300 flex items-start">
+                                  <span className="text-emerald-400 mr-2">•</span>
+                                  {point}
+                                </li>
+                              ))}
+                            </ul>
+                            <p className="text-xs text-slate-500 italic">{section.scriptHint}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* CTA 및 태그 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-700/50 rounded-lg p-4">
+                      <div className="text-xs text-slate-400 mb-1">📢 CTA</div>
+                      <p className="text-white text-sm">{scriptOutline.callToAction}</p>
+                    </div>
+                    <div className="bg-slate-700/50 rounded-lg p-4">
+                      <div className="text-xs text-slate-400 mb-1">🎨 썸네일 아이디어</div>
+                      <p className="text-white text-sm">{scriptOutline.thumbnailIdea}</p>
+                    </div>
+                  </div>
+
+                  {/* 태그 */}
+                  <div>
+                    <div className="text-xs text-slate-400 mb-2">🏷️ 추천 태그</div>
+                    <div className="flex flex-wrap gap-2">
+                      {scriptOutline.tags.map((tag, idx) => (
+                        <span key={idx} className="px-2 py-1 bg-slate-700 text-slate-300 rounded text-sm">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 모달 푸터 */}
+            {workflowStep === 'outline' && (
+              <div className="p-6 border-t border-slate-700 flex justify-end space-x-3">
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={handleGenerateScript}
+                  className="px-6 py-2 bg-gradient-to-r from-emerald-600 to-purple-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  이 목차로 대본 생성하기 →
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -37,6 +37,38 @@ interface GeneratedScript {
   scenes?: ScriptScene[];
 }
 
+interface ScriptOutlineData {
+  outline: {
+    title: string;
+    hook: string;
+    estimatedDuration: string;
+    sections: Array<{
+      order: number;
+      title: string;
+      duration: string;
+      keyPoints: string[];
+      scriptHint: string;
+    }>;
+    callToAction: string;
+    thumbnailIdea: string;
+    tags: string[];
+  };
+  contentIdea: {
+    id: number;
+    title: string;
+    description: string;
+    targetAudience: string;
+    estimatedViralScore: string;
+    reasoning: string;
+    suggestedFormat: string;
+  };
+  sourceVideo?: {
+    videoId: string;
+    title: string;
+  };
+  format: 'long' | 'short';
+}
+
 export default function ScriptsPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -54,6 +86,7 @@ export default function ScriptsPage() {
   const [topic, setTopic] = useState('');
   const [generatedScript, setGeneratedScript] = useState<GeneratedScript | null>(null);
   const [showScriptModal, setShowScriptModal] = useState(false);
+  const [outlineData, setOutlineData] = useState<ScriptOutlineData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -63,6 +96,90 @@ export default function ScriptsPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // 목차 데이터가 있으면 자동으로 대본 생성
+  useEffect(() => {
+    const storedOutline = sessionStorage.getItem('scriptOutline');
+    if (storedOutline) {
+      try {
+        const data: ScriptOutlineData = JSON.parse(storedOutline);
+        setOutlineData(data);
+        setFormat(data.format);
+        setTopic(data.contentIdea.title);
+
+        // 목차 정보 메시지 추가
+        const outlineMessage: Message = {
+          id: Date.now().toString(),
+          role: 'system',
+          content: `📋 **목차 기반 대본 생성 모드**\n\n**제목**: ${data.outline.title}\n**형식**: ${data.format === 'short' ? '숏폼 (60초)' : '롱폼'}\n**예상 길이**: ${data.outline.estimatedDuration}\n\n🎯 **훅**: ${data.outline.hook}\n\n📝 **섹션 구성**:\n${data.outline.sections.map(s => `${s.order}. ${s.title} (${s.duration})`).join('\n')}\n\n자동으로 대본을 생성합니다...`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, outlineMessage]);
+
+        // sessionStorage 정리
+        sessionStorage.removeItem('scriptOutline');
+
+        // 자동 대본 생성 시작
+        setTimeout(() => {
+          generateScriptFromOutline(data);
+        }, 1000);
+      } catch (e) {
+        console.error('Failed to parse outline data:', e);
+      }
+    }
+  }, []);
+
+  const generateScriptFromOutline = async (data: ScriptOutlineData) => {
+    setLoading(true);
+
+    const systemMessage: Message = {
+      id: Date.now().toString(),
+      role: 'system',
+      content: `🎬 Gemini AI가 목차를 바탕으로 "${data.outline.title}" 대본을 생성하고 있습니다...`,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, systemMessage]);
+
+    try {
+      const res = await fetch('/api/scripts/generate-from-outline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          outline: data.outline,
+          contentIdea: data.contentIdea,
+          format: data.format,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success && result.data) {
+        setGeneratedScript(result.data);
+
+        const scriptContent = formatScriptForDisplay(result.data);
+        const scriptMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: scriptContent,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, scriptMessage]);
+      } else {
+        throw new Error(result.error || '대본 생성에 실패했습니다.');
+      }
+    } catch (error: any) {
+      console.error('Error generating script from outline:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'system',
+        content: `대본 생성 중 오류가 발생했습니다: ${error.message}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
