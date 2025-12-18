@@ -87,6 +87,8 @@ export default function ScriptsPage() {
   const [generatedScript, setGeneratedScript] = useState<GeneratedScript | null>(null);
   const [showScriptModal, setShowScriptModal] = useState(false);
   const [outlineData, setOutlineData] = useState<ScriptOutlineData | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedScriptId, setSavedScriptId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -131,6 +133,7 @@ export default function ScriptsPage() {
 
   const generateScriptFromOutline = async (data: ScriptOutlineData) => {
     setLoading(true);
+    setSavedScriptId(null); // 새 대본 생성 시 저장 상태 리셋
 
     const systemMessage: Message = {
       id: Date.now().toString(),
@@ -268,6 +271,7 @@ export default function ScriptsPage() {
     }
 
     setLoading(true);
+    setSavedScriptId(null); // 새 대본 생성 시 저장 상태 리셋
 
     const systemMessage: Message = {
       id: Date.now().toString(),
@@ -366,6 +370,84 @@ export default function ScriptsPage() {
     if (generatedScript?.fullScript) {
       navigator.clipboard.writeText(generatedScript.fullScript);
       alert('대본이 클립보드에 복사되었습니다!');
+    }
+  };
+
+  const saveScriptToDb = async () => {
+    if (!generatedScript || saving || savedScriptId) return;
+
+    setSaving(true);
+    try {
+      // 1. 비디오 레코드 생성 (topic을 제목으로 사용)
+      const videoRes = await fetch('/api/videos/find-or-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          youtubeVideoId: `script-${Date.now()}`, // 유니크 ID 생성
+          title: topic || '제목 없음',
+          channelId: 'script-generator',
+          channelName: '대본 생성기',
+        }),
+      });
+
+      const videoData = await videoRes.json();
+      if (!videoData.success) {
+        throw new Error(videoData.error || '비디오 레코드 생성에 실패했습니다.');
+      }
+
+      const dbVideoId = videoData.data.id;
+
+      // 2. 대본 저장
+      const scriptRes = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId: dbVideoId,
+          scriptPurpose: outlineData?.contentIdea?.description || topic,
+          targetAudience: outlineData?.contentIdea?.targetAudience || '일반 시청자',
+          expectedDurationSeconds: generatedScript.estimatedDuration || (format === 'short' ? 60 : 300),
+          scriptStructure: {
+            hook: generatedScript.hook,
+            intro: generatedScript.intro,
+            body: generatedScript.body,
+            conclusion: generatedScript.conclusion,
+          },
+          fullScript: generatedScript.fullScript,
+          hookText: generatedScript.hook,
+          introText: generatedScript.intro,
+          bodyText: generatedScript.body,
+          conclusionText: generatedScript.conclusion,
+          contentFormat: format,
+          wordCount: generatedScript.fullScript?.length || 0,
+        }),
+      });
+
+      const scriptData = await scriptRes.json();
+      if (!scriptData.success) {
+        throw new Error(scriptData.error || '대본 저장에 실패했습니다.');
+      }
+
+      setSavedScriptId(scriptData.data.id);
+
+      // 저장 완료 메시지
+      const saveMessage: Message = {
+        id: Date.now().toString(),
+        role: 'system',
+        content: `✅ 대본이 데이터베이스에 저장되었습니다! (ID: ${scriptData.data.id})\n\n📋 대본 기록에서 확인할 수 있습니다.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, saveMessage]);
+    } catch (error: any) {
+      console.error('Save error:', error);
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: 'system',
+        content: `❌ 저장 중 오류가 발생했습니다: ${error.message}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -605,6 +687,37 @@ export default function ScriptsPage() {
                 >
                   📋 대본 복사하기
                 </Button>
+                {savedScriptId ? (
+                  <div className="flex items-center justify-center space-x-2 py-2 text-green-400 text-sm">
+                    <span>✅</span>
+                    <span>저장됨 (ID: {savedScriptId})</span>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={saveScriptToDb}
+                    variant="outline"
+                    className="w-full"
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <span className="animate-spin mr-2">⏳</span>
+                        저장 중...
+                      </>
+                    ) : (
+                      <>
+                        💾 DB에 저장
+                      </>
+                    )}
+                  </Button>
+                )}
+                {savedScriptId && (
+                  <Link href="/scripts/history" className="block">
+                    <Button variant="ghost" className="w-full text-purple-400">
+                      📋 대본 기록 보기
+                    </Button>
+                  </Link>
+                )}
               </CardContent>
             </Card>
           )}

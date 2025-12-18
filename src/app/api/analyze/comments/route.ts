@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         negativeKeywords: analysisResult.negativeKeywords,
         improvementSuggestions: analysisResult.improvementSuggestions || '',
         rawCommentsJson: JSON.stringify(commentsToAnalyze),
-        analysisModel: 'gemini-2.5-flash-preview',
+        analysisModel: 'gemini-3-pro-preview',
       });
 
       return NextResponse.json({

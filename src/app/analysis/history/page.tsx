@@ -78,6 +78,7 @@ export default function AnalysisHistoryPage() {
   const [search, setSearch] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<AnalysisRecord | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
+  const [deleting, setDeleting] = useState<number | null>(null);
 
   const fetchRecords = async (offset = 0, searchQuery = '') => {
     setLoading(true);
@@ -124,6 +125,35 @@ export default function AnalysisHistoryPage() {
   const handleLoadMore = () => {
     if (pagination) {
       fetchRecords(pagination.offset + pagination.limit, search);
+    }
+  };
+
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (!confirm('이 분석 기록을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/analysis/history/${id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setRecords(prev => prev.filter(r => r.id !== id));
+        if (selectedRecord?.id === id) {
+          setSelectedRecord(null);
+        }
+      } else {
+        setError(data.error || '삭제에 실패했습니다.');
+      }
+    } catch {
+      setError('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -272,10 +302,16 @@ export default function AnalysisHistoryPage() {
                     <span>댓글 {record.totalCommentsAnalyzed}개</span>
                   </div>
 
-                  {/* 분석 날짜 */}
+                  {/* 분석 날짜 및 삭제 버튼 */}
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500">{formatDate(record.analyzedAt)}</span>
-                    <span className="text-purple-400">{record.analysisModel}</span>
+                    <button
+                      onClick={(e) => handleDelete(record.id, e)}
+                      disabled={deleting === record.id}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                    >
+                      {deleting === record.id ? '삭제 중...' : '🗑️ 삭제'}
+                    </button>
                   </div>
                 </div>
               </CardContent>
@@ -335,13 +371,22 @@ export default function AnalysisHistoryPage() {
                         {formatDate(record.analyzedAt)}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setSelectedRecord(record)}
-                        >
-                          상세보기
-                        </Button>
+                        <div className="flex items-center justify-center space-x-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedRecord(record)}
+                          >
+                            상세보기
+                          </Button>
+                          <button
+                            onClick={(e) => handleDelete(record.id, e)}
+                            disabled={deleting === record.id}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2 py-1 rounded text-sm transition-colors disabled:opacity-50"
+                          >
+                            {deleting === record.id ? '...' : '삭제'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

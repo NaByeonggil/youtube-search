@@ -25,7 +25,7 @@ export class GeminiService {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(finalApiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'models/gemini-3-pro-preview' });
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-3-pro-preview' });
   }
 
   /**

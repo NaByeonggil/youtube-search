@@ -61,6 +61,11 @@ function AnalysisContent() {
   const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(null);
   const [expandedSection, setExpandedSection] = useState<'positive' | 'negative' | 'improvements' | null>(null);
   const [commentViewMode, setCommentViewMode] = useState<'card' | 'table'>('card');
+  const [saveToDb, setSaveToDb] = useState(false);
+  const [savedAnalysisId, setSavedAnalysisId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [rawAnalysisResult, setRawAnalysisResult] = useState<any>(null);
+  const [analyzedComments, setAnalyzedComments] = useState<string[]>([]);
 
   // Check for video ID from URL params and sessionStorage
   useEffect(() => {
@@ -87,6 +92,9 @@ function AnalysisContent() {
     setError('');
     setAnalysis(null);
     setExpandedSection(null);
+    setSavedAnalysisId(null);
+    setRawAnalysisResult(null);
+    setAnalyzedComments([]);
 
     try {
       // Step 1: Fetch comments from YouTube
@@ -134,6 +142,10 @@ function AnalysisContent() {
       }
 
       const result = analysisData.data;
+
+      // Store raw result for potential DB saving
+      setRawAnalysisResult(result);
+      setAnalyzedComments(commentTexts);
 
       // Step 3: Classify comments
       setLoadingStep('분석 결과를 정리하는 중...');
@@ -257,6 +269,68 @@ function AnalysisContent() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+  };
+
+  const saveAnalysisToDb = async () => {
+    if (!rawAnalysisResult || saving || savedAnalysisId) return;
+
+    const videoId = extractVideoId(videoUrl);
+    if (!videoId) {
+      setError('유효한 YouTube 비디오 ID가 없습니다.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Step 1: Find or create video record
+      const videoRes = await fetch('/api/videos/find-or-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          youtubeVideoId: videoId,
+          title: selectedVideo?.title || `영상 ${videoId}`,
+          channelId: selectedVideo?.channelTitle || 'unknown',
+          channelName: selectedVideo?.channelTitle,
+          subscriberCount: selectedVideo?.subscriberCount,
+          viewCount: selectedVideo?.viewCount,
+          thumbnailUrl: selectedVideo?.thumbnailUrl,
+          viralScore: selectedVideo?.viralScore,
+          viralGrade: selectedVideo?.viralGrade,
+        }),
+      });
+
+      const videoData = await videoRes.json();
+      if (!videoData.success) {
+        throw new Error(videoData.error || '영상 정보 저장에 실패했습니다.');
+      }
+
+      const dbVideoId = videoData.data.id;
+
+      // Step 2: Save analysis with DB video ID
+      const analysisRes = await fetch('/api/analyze/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId,
+          comments: analyzedComments,
+          format: selectedVideo?.format || 'long',
+          saveToDb: true,
+          dbVideoId,
+        }),
+      });
+
+      const analysisData = await analysisRes.json();
+      if (!analysisData.success) {
+        throw new Error(analysisData.error || '분석 결과 저장에 실패했습니다.');
+      }
+
+      setSavedAnalysisId(analysisData.data.id);
+    } catch (err: any) {
+      console.error('Save error:', err);
+      setError(err.message || '저장 중 오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -812,6 +886,54 @@ function AnalysisContent() {
                 )}
               </div>
             )}
+          </Card>
+
+          {/* DB 저장 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>분석 결과 저장</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {savedAnalysisId ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-400">✅</span>
+                    <p className="text-slate-300">
+                      분석 결과가 데이터베이스에 저장되었습니다. (ID: {savedAnalysisId})
+                    </p>
+                  </div>
+                  <Link href="/analysis/history">
+                    <Button variant="outline">
+                      <span className="mr-2">📋</span>
+                      분석 기록 보기
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <p className="text-slate-300">
+                    분석 결과를 데이터베이스에 저장하여 나중에 다시 확인할 수 있습니다.
+                  </p>
+                  <Button
+                    onClick={saveAnalysisToDb}
+                    disabled={saving || !rawAnalysisResult}
+                    variant="outline"
+                  >
+                    {saving ? (
+                      <>
+                        <span className="animate-spin mr-2">⏳</span>
+                        저장 중...
+                      </>
+                    ) : (
+                      <>
+                        <span className="mr-2">💾</span>
+                        DB에 저장
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
           </Card>
 
           {/* 다음 단계 */}
