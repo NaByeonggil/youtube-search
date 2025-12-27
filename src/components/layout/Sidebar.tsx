@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: '검색하기', href: '/search', icon: '🔍' },
       { name: '콘텐츠 아이디어', href: '/content-ideas/history', icon: '💡' },
+      { name: '블로그 히스토리', href: '/blog/history', icon: '📰' },
     ]
   },
   { name: '영상 분석', href: '/projects', icon: '📊', step: 2 },

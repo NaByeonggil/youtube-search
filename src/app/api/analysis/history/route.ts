@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
-interface AnalysisHistoryRow {
+interface AnalysisHistoryRow extends RowDataPacket {
   id: number;
   video_id: number;
   total_comments_analyzed: number;
@@ -113,7 +114,7 @@ export async function GET(request: NextRequest) {
       countSql += ` WHERE sv.title LIKE ? OR sv.channel_name LIKE ? OR p.project_name LIKE ?`;
     }
 
-    const countResult = await query<{ total: number }[]>(
+    const countResult = await query<(RowDataPacket & { total: number })[]>(
       countSql,
       search ? [`%${search}%`, `%${search}%`, `%${search}%`] : []
     );

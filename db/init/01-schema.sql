@@ -732,3 +732,42 @@ CREATE TABLE IF NOT EXISTS generated_images (
     INDEX idx_session_id (session_id),
     INDEX idx_scene_id (scene_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 26. 생성된 블로그 테이블 (generated_blogs)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS generated_blogs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    -- 소스 정보
+    source_video_id VARCHAR(20),
+    source_video_title VARCHAR(500),
+    source_channel_name VARCHAR(200),
+
+    -- 콘텐츠 아이디어 정보
+    idea_title VARCHAR(500),
+    idea_description TEXT,
+    idea_target_audience VARCHAR(200),
+
+    -- 블로그 콘텐츠
+    blog_title VARCHAR(500) NOT NULL,
+    meta_description TEXT,
+    introduction LONGTEXT,
+    sections JSON,
+    conclusion LONGTEXT,
+    tags JSON,
+    estimated_read_time VARCHAR(20),
+
+    -- 생성 옵션
+    custom_target VARCHAR(200),
+    tone_and_manner VARCHAR(200),
+
+    -- 통계
+    word_count INT DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_source_video_id (source_video_id),
+    INDEX idx_created_at (created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

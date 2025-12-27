@@ -14,7 +14,9 @@ export async function POST(request: NextRequest) {
     const {
       contentIdea,
       format = 'long',
-      additionalContext
+      additionalContext,
+      customTarget,
+      toneAndManner
     } = body;
 
     if (!contentIdea || !contentIdea.title) {
@@ -30,7 +32,11 @@ export async function POST(request: NextRequest) {
     const outline = await geminiService.generateScriptOutline(
       contentIdea as ContentIdeaItem,
       format as ContentFormat,
-      additionalContext
+      {
+        additionalContext,
+        customTarget,
+        toneAndManner,
+      }
     );
 
     return NextResponse.json({

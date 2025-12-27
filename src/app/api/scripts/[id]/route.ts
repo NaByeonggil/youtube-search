@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, execute } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
-interface ScriptRow {
+interface ScriptRow extends RowDataPacket {
   id: number;
   video_id: number;
   script_purpose: string;

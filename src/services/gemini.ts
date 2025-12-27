@@ -287,9 +287,16 @@ ${comments.slice(0, 100).map((c, i) => `${i + 1}. ${c}`).join('\n')}
   async generateScriptOutline(
     contentIdea: ContentIdeaItem,
     format: ContentFormat = 'long',
-    additionalContext?: string
+    options?: {
+      additionalContext?: string;
+      customTarget?: string;
+      toneAndManner?: string;
+    }
   ): Promise<ScriptOutlineResult> {
     const isShort = format === 'short';
+    const targetAudience = options?.customTarget || contentIdea.targetAudience;
+    const toneAndManner = options?.toneAndManner || '친근하고 전문적인';
+    const additionalContext = options?.additionalContext;
 
     const structureGuide = isShort
       ? `숏폼 구조 (60초):
@@ -307,8 +314,15 @@ ${comments.slice(0, 100).map((c, i) => `${i + 1}. ${c}`).join('\n')}
 ## 콘텐츠 아이디어
 제목: ${contentIdea.title}
 설명: ${contentIdea.description}
-타겟: ${contentIdea.targetAudience}
 형식: ${format === 'short' ? '숏폼' : '롱폼'}
+
+## 타겟 시청자
+${targetAudience}
+
+## 톤앤매너
+${toneAndManner}
+- "${toneAndManner}" 톤으로 대본을 구성해주세요
+- "${targetAudience}"가 공감할 수 있는 내용으로 작성해주세요
 
 ## 참고할 구조
 ${structureGuide}
@@ -353,6 +367,102 @@ ${additionalContext ? `## 추가 컨텍스트\n${additionalContext}` : ''}
       callToAction: '',
       thumbnailIdea: '',
       tags: [],
+    };
+  }
+
+  /**
+   * 블로그 포스트 생성
+   * 콘텐츠 아이디어를 바탕으로 SEO 최적화된 블로그 글 생성
+   */
+  async generateBlogPost(
+    contentIdea: ContentIdeaItem,
+    options?: {
+      additionalContext?: string;
+      customTarget?: string;
+      toneAndManner?: string;
+    }
+  ): Promise<{
+    title: string;
+    metaDescription: string;
+    introduction: string;
+    sections: Array<{
+      heading: string;
+      content: string;
+    }>;
+    conclusion: string;
+    tags: string[];
+    estimatedReadTime: string;
+  }> {
+    const targetAudience = options?.customTarget || contentIdea.targetAudience;
+    const toneAndManner = options?.toneAndManner || '친근하고 전문적인';
+    const additionalContext = options?.additionalContext;
+
+    const prompt = `당신은 SEO 최적화된 블로그 글을 작성하는 전문 콘텐츠 마케터입니다.
+주어진 콘텐츠 아이디어를 바탕으로 매력적이고 정보가 풍부한 블로그 포스트를 작성해주세요.
+
+## 콘텐츠 아이디어
+제목: ${contentIdea.title}
+설명: ${contentIdea.description}
+
+## 타겟 독자
+${targetAudience}
+
+## 톤앤매너
+${toneAndManner}
+
+${additionalContext ? `## 추가 컨텍스트\n${additionalContext}` : ''}
+
+## 작성 가이드라인
+- "${toneAndManner}" 톤앤매너로 작성
+- "${targetAudience}"가 이해하기 쉽게 작성
+- SEO를 위한 키워드 자연스럽게 포함
+- 소제목으로 구조화된 콘텐츠
+- 실용적인 팁과 인사이트 포함
+- 1,500-2,500자 분량
+
+반드시 아래 JSON 형식으로만 응답해주세요 (다른 텍스트 없이 JSON만):
+{
+  "title": "SEO 최적화된 블로그 제목",
+  "metaDescription": "검색 결과에 표시될 설명 (150자 이내)",
+  "introduction": "독자의 관심을 끄는 도입부 (2-3문단)",
+  "sections": [
+    {
+      "heading": "소제목 1",
+      "content": "해당 섹션의 내용 (2-3문단)"
+    },
+    {
+      "heading": "소제목 2",
+      "content": "해당 섹션의 내용"
+    },
+    {
+      "heading": "소제목 3",
+      "content": "해당 섹션의 내용"
+    }
+  ],
+  "conclusion": "핵심 메시지를 요약하고 행동을 유도하는 마무리",
+  "tags": ["태그1", "태그2", "태그3", "태그4", "태그5"],
+  "estimatedReadTime": "5분"
+}`;
+
+    const response = await this.callAPI(prompt);
+
+    try {
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (error) {
+      console.error('Error parsing blog post response:', error);
+    }
+
+    return {
+      title: contentIdea.title,
+      metaDescription: contentIdea.description,
+      introduction: '',
+      sections: [],
+      conclusion: '',
+      tags: [],
+      estimatedReadTime: '5분',
     };
   }
 

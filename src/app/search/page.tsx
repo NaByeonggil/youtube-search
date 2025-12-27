@@ -62,7 +62,22 @@ interface ScriptOutlineResult {
   tags: string[];
 }
 
-type WorkflowStep = 'idle' | 'collecting' | 'analyzing' | 'ideas' | 'outline';
+interface BlogSection {
+  heading: string;
+  content: string;
+}
+
+interface BlogPostResult {
+  title: string;
+  metaDescription: string;
+  introduction: string;
+  sections: BlogSection[];
+  conclusion: string;
+  tags: string[];
+  estimatedReadTime: string;
+}
+
+type WorkflowStep = 'idle' | 'collecting' | 'analyzing' | 'ideas' | 'scriptOptions' | 'outline' | 'blogOptions' | 'blog';
 
 const gradeColors: Record<string, string> = {
   S: 'bg-red-500 text-white',
@@ -110,6 +125,11 @@ export default function SearchPage() {
   const [contentIdeas, setContentIdeas] = useState<ContentIdeasResult | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<ContentIdeaItem | null>(null);
   const [scriptOutline, setScriptOutline] = useState<ScriptOutlineResult | null>(null);
+  const [blogPost, setBlogPost] = useState<BlogPostResult | null>(null);
+  const [blogTarget, setBlogTarget] = useState('');
+  const [blogTone, setBlogTone] = useState('');
+  const [scriptTarget, setScriptTarget] = useState('');
+  const [scriptTone, setScriptTone] = useState('');
   const [workflowError, setWorkflowError] = useState('');
 
   const handleAnalyze = async (video: VideoResult) => {
@@ -140,6 +160,7 @@ export default function SearchPage() {
     setContentIdeas(null);
     setSelectedIdea(null);
     setScriptOutline(null);
+    setBlogPost(null);
 
     try {
       // Step 1: Analyze content ideas from comments
@@ -169,8 +190,17 @@ export default function SearchPage() {
     }
   };
 
-  const handleSelectIdea = async (idea: ContentIdeaItem) => {
+  const handleShowScriptOptions = (idea: ContentIdeaItem) => {
     setSelectedIdea(idea);
+    setScriptTarget(idea.targetAudience || '');
+    setScriptTone('친근하고 전문적인');
+    setWorkflowStep('scriptOptions');
+    setWorkflowError('');
+  };
+
+  const handleSelectIdea = async () => {
+    if (!selectedIdea) return;
+
     setWorkflowStep('analyzing');
     setWorkflowError('');
 
@@ -179,8 +209,10 @@ export default function SearchPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contentIdea: idea,
-          format: idea.suggestedFormat === '숏폼' ? 'short' : 'long',
+          contentIdea: selectedIdea,
+          format: selectedIdea.suggestedFormat === '숏폼' ? 'short' : 'long',
+          customTarget: scriptTarget || undefined,
+          toneAndManner: scriptTone || undefined,
         }),
       });
 
@@ -191,11 +223,11 @@ export default function SearchPage() {
         setWorkflowStep('outline');
       } else {
         setWorkflowError(data.error || '대본 목차 생성에 실패했습니다.');
-        setWorkflowStep('ideas');
+        setWorkflowStep('scriptOptions');
       }
     } catch (err) {
       setWorkflowError('목차 생성 중 오류가 발생했습니다.');
-      setWorkflowStep('ideas');
+      setWorkflowStep('scriptOptions');
     }
   };
 
@@ -264,6 +296,92 @@ export default function SearchPage() {
     router.push('/scripts');
   };
 
+  const handleShowBlogOptions = (idea: ContentIdeaItem) => {
+    setSelectedIdea(idea);
+    setBlogTarget(idea.targetAudience || '');
+    setBlogTone('친근하고 전문적인');
+    setWorkflowStep('blogOptions');
+    setWorkflowError('');
+  };
+
+  const handleGenerateBlog = async () => {
+    if (!selectedIdea) return;
+
+    setWorkflowStep('analyzing');
+    setWorkflowError('');
+
+    try {
+      const response = await fetch('/api/blog/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contentIdea: selectedIdea,
+          customTarget: blogTarget || undefined,
+          toneAndManner: blogTone || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setBlogPost(data.data.blogPost);
+        setWorkflowStep('blog');
+
+        // 블로그 DB 저장
+        try {
+          await fetch('/api/blog/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sourceVideo: selectedVideo ? {
+                videoId: selectedVideo.videoId,
+                title: selectedVideo.title,
+                channelName: selectedVideo.channelTitle,
+              } : undefined,
+              idea: {
+                title: selectedIdea.title,
+                description: selectedIdea.description,
+                targetAudience: selectedIdea.targetAudience,
+              },
+              blogPost: data.data.blogPost,
+              options: {
+                customTarget: blogTarget || undefined,
+                toneAndManner: blogTone || undefined,
+              },
+            }),
+          });
+        } catch (saveError) {
+          console.error('블로그 저장 오류:', saveError);
+        }
+      } else {
+        setWorkflowError(data.error || '블로그 생성에 실패했습니다.');
+        setWorkflowStep('blogOptions');
+      }
+    } catch (err) {
+      setWorkflowError('블로그 생성 중 오류가 발생했습니다.');
+      setWorkflowStep('blogOptions');
+    }
+  };
+
+  const handleCopyBlog = () => {
+    if (!blogPost) return;
+
+    const fullText = `# ${blogPost.title}
+
+${blogPost.introduction}
+
+${blogPost.sections.map(s => `## ${s.heading}\n\n${s.content}`).join('\n\n')}
+
+${blogPost.conclusion}
+
+---
+태그: ${blogPost.tags.map(t => `#${t}`).join(' ')}
+`;
+
+    navigator.clipboard.writeText(fullText);
+    alert('블로그 내용이 클립보드에 복사되었습니다!');
+  };
+
   const closeModal = () => {
     setShowIdeaModal(false);
     setWorkflowStep('idle');
@@ -271,6 +389,11 @@ export default function SearchPage() {
     setContentIdeas(null);
     setSelectedIdea(null);
     setScriptOutline(null);
+    setBlogPost(null);
+    setBlogTarget('');
+    setBlogTone('');
+    setScriptTarget('');
+    setScriptTone('');
     setWorkflowError('');
   };
 
@@ -689,8 +812,7 @@ export default function SearchPage() {
                       {contentIdeas.contentIdeas.map((idea) => (
                         <div
                           key={idea.id}
-                          className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-emerald-500/50 transition-colors cursor-pointer"
-                          onClick={() => handleSelectIdea(idea)}
+                          className="bg-slate-700/50 rounded-xl p-5 border border-slate-600 hover:border-purple-500/50 transition-colors"
                         >
                           <div className="flex items-start justify-between mb-3">
                             <h4 className="text-lg font-semibold text-white">{idea.title}</h4>
@@ -704,10 +826,29 @@ export default function SearchPage() {
                             </div>
                           </div>
                           <p className="text-slate-300 text-sm mb-3">{idea.description}</p>
-                          <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center justify-between text-xs mb-3">
                             <span className="text-slate-400">타겟: {idea.targetAudience}</span>
-                            <button className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                              이 아이디어로 대본 만들기 →
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShowScriptOptions(idea);
+                              }}
+                              className="flex-1 px-3 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center space-x-1"
+                            >
+                              <span>📝</span>
+                              <span>대본 만들기</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShowBlogOptions(idea);
+                              }}
+                              className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
+                            >
+                              <span>✏️</span>
+                              <span>블로그 작성</span>
                             </button>
                           </div>
                           <p className="text-xs text-slate-500 mt-3 italic">💡 {idea.reasoning}</p>
@@ -718,8 +859,8 @@ export default function SearchPage() {
                 </div>
               )}
 
-              {/* 대본 목차 */}
-              {workflowStep === 'outline' && scriptOutline && selectedIdea && (
+              {/* 대본 옵션 입력 */}
+              {workflowStep === 'scriptOptions' && selectedIdea && (
                 <div className="space-y-6">
                   {/* 뒤로가기 */}
                   <button
@@ -730,6 +871,100 @@ export default function SearchPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                     <span className="text-sm">아이디어 목록으로</span>
+                  </button>
+
+                  {/* 선택된 아이디어 정보 */}
+                  <div className="bg-gradient-to-r from-emerald-600/20 to-purple-600/20 rounded-xl p-6 border border-emerald-500/30">
+                    <h3 className="text-xl font-bold text-white mb-2">📝 대본 작성 설정</h3>
+                    <div className="bg-slate-800/50 rounded-lg p-4 mt-4">
+                      <div className="text-xs text-slate-400 mb-1">선택한 아이디어</div>
+                      <p className="text-white font-medium">{selectedIdea.title}</p>
+                      <p className="text-slate-400 text-sm mt-1">{selectedIdea.description}</p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <span className="px-2 py-1 bg-slate-600 rounded text-xs text-slate-300">
+                          {selectedIdea.suggestedFormat}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 입력 필드들 */}
+                  <div className="space-y-4">
+                    {/* 타겟 시청자 */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        🎯 타겟 시청자
+                      </label>
+                      <input
+                        type="text"
+                        value={scriptTarget}
+                        onChange={(e) => setScriptTarget(e.target.value)}
+                        placeholder="예: 20대 대학생, 직장인 초보, 자취생"
+                        className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        영상의 주요 시청자층을 명시해주세요
+                      </p>
+                    </div>
+
+                    {/* 톤앤매너 */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        🎨 톤앤매너
+                      </label>
+                      <input
+                        type="text"
+                        value={scriptTone}
+                        onChange={(e) => setScriptTone(e.target.value)}
+                        placeholder="예: 친근하고 유머러스한, 차분하고 신뢰감 있는"
+                        className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        영상의 어조와 분위기를 설정해주세요
+                      </p>
+                    </div>
+
+                    {/* 톤앤매너 프리셋 */}
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-2">빠른 선택</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          '친근하고 전문적인',
+                          '유머러스하고 가벼운',
+                          '진지하고 권위있는',
+                          '따뜻하고 공감적인',
+                          '빠르고 역동적인',
+                        ].map((tone) => (
+                          <button
+                            key={tone}
+                            onClick={() => setScriptTone(tone)}
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                              scriptTone === tone
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            }`}
+                          >
+                            {tone}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 대본 목차 */}
+              {workflowStep === 'outline' && scriptOutline && selectedIdea && (
+                <div className="space-y-6">
+                  {/* 뒤로가기 */}
+                  <button
+                    onClick={() => setWorkflowStep('scriptOptions')}
+                    className="flex items-center space-x-1 text-slate-400 hover:text-white transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span className="text-sm">설정으로 돌아가기</span>
                   </button>
 
                   {/* 대본 정보 */}
@@ -801,9 +1036,207 @@ export default function SearchPage() {
                   </div>
                 </div>
               )}
+
+              {/* 블로그 옵션 입력 */}
+              {workflowStep === 'blogOptions' && selectedIdea && (
+                <div className="space-y-6">
+                  {/* 뒤로가기 */}
+                  <button
+                    onClick={() => setWorkflowStep('ideas')}
+                    className="flex items-center space-x-1 text-slate-400 hover:text-white transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span className="text-sm">아이디어 목록으로</span>
+                  </button>
+
+                  {/* 선택된 아이디어 정보 */}
+                  <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-6 border border-blue-500/30">
+                    <h3 className="text-xl font-bold text-white mb-2">✏️ 블로그 작성 설정</h3>
+                    <div className="bg-slate-800/50 rounded-lg p-4 mt-4">
+                      <div className="text-xs text-slate-400 mb-1">선택한 아이디어</div>
+                      <p className="text-white font-medium">{selectedIdea.title}</p>
+                      <p className="text-slate-400 text-sm mt-1">{selectedIdea.description}</p>
+                    </div>
+                  </div>
+
+                  {/* 입력 필드들 */}
+                  <div className="space-y-4">
+                    {/* 타겟 독자 */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        🎯 타겟 독자
+                      </label>
+                      <input
+                        type="text"
+                        value={blogTarget}
+                        onChange={(e) => setBlogTarget(e.target.value)}
+                        placeholder="예: 20대 직장인, 육아맘, IT 개발자"
+                        className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        블로그 글의 주요 독자층을 명시해주세요
+                      </p>
+                    </div>
+
+                    {/* 톤앤매너 */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        🎨 톤앤매너
+                      </label>
+                      <input
+                        type="text"
+                        value={blogTone}
+                        onChange={(e) => setBlogTone(e.target.value)}
+                        placeholder="예: 친근하고 유머러스한, 전문적이고 권위있는"
+                        className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        글의 어조와 분위기를 설정해주세요
+                      </p>
+                    </div>
+
+                    {/* 톤앤매너 프리셋 */}
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-2">빠른 선택</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          '친근하고 전문적인',
+                          '유머러스하고 가벼운',
+                          '진지하고 권위있는',
+                          '따뜻하고 공감적인',
+                          '간결하고 실용적인',
+                        ].map((tone) => (
+                          <button
+                            key={tone}
+                            onClick={() => setBlogTone(tone)}
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                              blogTone === tone
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            }`}
+                          >
+                            {tone}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 블로그 포스트 */}
+              {workflowStep === 'blog' && blogPost && selectedIdea && (
+                <div className="space-y-6">
+                  {/* 뒤로가기 */}
+                  <button
+                    onClick={() => setWorkflowStep('ideas')}
+                    className="flex items-center space-x-1 text-slate-400 hover:text-white transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span className="text-sm">아이디어 목록으로</span>
+                  </button>
+
+                  {/* 블로그 헤더 */}
+                  <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-6 border border-blue-500/30">
+                    <h3 className="text-xl font-bold text-white mb-2">{blogPost.title}</h3>
+                    <div className="flex items-center space-x-4 text-sm text-slate-300 mb-4">
+                      <span>📖 {blogPost.estimatedReadTime} 읽기</span>
+                      <span>📝 {blogPost.sections.length}개 섹션</span>
+                    </div>
+                    <div className="bg-slate-800/50 rounded-lg p-4">
+                      <div className="text-xs text-slate-400 mb-1">🔍 메타 설명 (SEO)</div>
+                      <p className="text-slate-300 text-sm">{blogPost.metaDescription}</p>
+                    </div>
+                  </div>
+
+                  {/* 도입부 */}
+                  <div className="bg-slate-700/50 rounded-lg p-5 border border-slate-600">
+                    <h4 className="text-sm font-semibold text-blue-400 mb-3">📌 도입부</h4>
+                    <p className="text-slate-300 text-sm whitespace-pre-line">{blogPost.introduction}</p>
+                  </div>
+
+                  {/* 본문 섹션들 */}
+                  <div>
+                    <h4 className="text-lg font-semibold text-white mb-4">📑 본문</h4>
+                    <div className="space-y-4">
+                      {blogPost.sections.map((section, idx) => (
+                        <div key={idx} className="bg-slate-700/50 rounded-lg p-5 border border-slate-600">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                              {idx + 1}
+                            </span>
+                            <h5 className="font-medium text-white">{section.heading}</h5>
+                          </div>
+                          <p className="text-slate-300 text-sm whitespace-pre-line ml-8">{section.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 결론 */}
+                  <div className="bg-slate-700/50 rounded-lg p-5 border border-slate-600">
+                    <h4 className="text-sm font-semibold text-emerald-400 mb-3">🎯 결론</h4>
+                    <p className="text-slate-300 text-sm whitespace-pre-line">{blogPost.conclusion}</p>
+                  </div>
+
+                  {/* 태그 */}
+                  <div>
+                    <div className="text-xs text-slate-400 mb-2">🏷️ 블로그 태그</div>
+                    <div className="flex flex-wrap gap-2">
+                      {blogPost.tags.map((tag, idx) => (
+                        <span key={idx} className="px-2 py-1 bg-blue-600/30 text-blue-300 rounded text-sm">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* 모달 푸터 */}
+            {/* 모달 푸터 - 대본 옵션 */}
+            {workflowStep === 'scriptOptions' && (
+              <div className="p-6 border-t border-slate-700 flex justify-end space-x-3">
+                <button
+                  onClick={() => setWorkflowStep('ideas')}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSelectIdea}
+                  className="px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity flex items-center space-x-2"
+                >
+                  <span>📝</span>
+                  <span>대본 목차 생성하기</span>
+                </button>
+              </div>
+            )}
+
+            {/* 모달 푸터 - 블로그 옵션 */}
+            {workflowStep === 'blogOptions' && (
+              <div className="p-6 border-t border-slate-700 flex justify-end space-x-3">
+                <button
+                  onClick={() => setWorkflowStep('ideas')}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleGenerateBlog}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity flex items-center space-x-2"
+                >
+                  <span>✏️</span>
+                  <span>블로그 생성하기</span>
+                </button>
+              </div>
+            )}
+
+            {/* 모달 푸터 - 대본 목차 */}
             {workflowStep === 'outline' && (
               <div className="p-6 border-t border-slate-700 flex justify-end space-x-3">
                 <button
@@ -817,6 +1250,27 @@ export default function SearchPage() {
                   className="px-6 py-2 bg-gradient-to-r from-emerald-600 to-purple-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity"
                 >
                   이 목차로 대본 생성하기 →
+                </button>
+              </div>
+            )}
+
+            {/* 모달 푸터 - 블로그 */}
+            {workflowStep === 'blog' && (
+              <div className="p-6 border-t border-slate-700 flex justify-end space-x-3">
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={handleCopyBlog}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span>블로그 복사하기</span>
                 </button>
               </div>
             )}

@@ -613,6 +613,97 @@ export const db = {
       );
     },
   },
+
+  // Generated Blogs
+  generatedBlogs: {
+    async create(data: {
+      sourceVideoId?: string;
+      sourceVideoTitle?: string;
+      sourceChannelName?: string;
+      ideaTitle?: string;
+      ideaDescription?: string;
+      ideaTargetAudience?: string;
+      blogTitle: string;
+      metaDescription?: string;
+      introduction?: string;
+      sections?: unknown[];
+      conclusion?: string;
+      tags?: string[];
+      estimatedReadTime?: string;
+      customTarget?: string;
+      toneAndManner?: string;
+      wordCount?: number;
+    }) {
+      const result = await execute(
+        `INSERT INTO generated_blogs
+        (source_video_id, source_video_title, source_channel_name,
+         idea_title, idea_description, idea_target_audience,
+         blog_title, meta_description, introduction, sections, conclusion,
+         tags, estimated_read_time, custom_target, tone_and_manner, word_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          data.sourceVideoId || null,
+          data.sourceVideoTitle || null,
+          data.sourceChannelName || null,
+          data.ideaTitle || null,
+          data.ideaDescription || null,
+          data.ideaTargetAudience || null,
+          data.blogTitle,
+          data.metaDescription || null,
+          data.introduction || null,
+          JSON.stringify(data.sections || []),
+          data.conclusion || null,
+          JSON.stringify(data.tags || []),
+          data.estimatedReadTime || null,
+          data.customTarget || null,
+          data.toneAndManner || null,
+          data.wordCount || 0
+        ]
+      );
+      return result.insertId;
+    },
+
+    async findById(id: number) {
+      return queryOne(
+        `SELECT * FROM generated_blogs WHERE id = ?`,
+        [id]
+      );
+    },
+
+    async findAll(limit = 20, offset = 0, search?: string) {
+      let sql = `SELECT * FROM generated_blogs`;
+      const params: unknown[] = [];
+
+      if (search) {
+        sql += ` WHERE blog_title LIKE ? OR idea_title LIKE ?`;
+        const searchPattern = `%${search}%`;
+        params.push(searchPattern, searchPattern);
+      }
+
+      sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+      params.push(limit, offset);
+
+      return query(sql, params);
+    },
+
+    async count(search?: string) {
+      let sql = `SELECT COUNT(*) as total FROM generated_blogs`;
+      const params: unknown[] = [];
+
+      if (search) {
+        sql += ` WHERE blog_title LIKE ? OR idea_title LIKE ?`;
+        const searchPattern = `%${search}%`;
+        params.push(searchPattern, searchPattern);
+      }
+
+      const result = await query<(RowDataPacket & { total: number })[]>(sql, params);
+      return result[0]?.total || 0;
+    },
+
+    async delete(id: number) {
+      return execute(`DELETE FROM generated_blogs WHERE id = ?`, [id]);
+    },
+  },
 };
 
 export default db;

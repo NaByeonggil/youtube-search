@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, query } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
-interface ScriptRow {
+interface ScriptRow extends RowDataPacket {
   id: number;
   video_id: number;
   script_purpose: string;
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
       countParams.push(format);
     }
 
-    const countResult = await query<{ total: number }[]>(countSql, countParams);
+    const countResult = await query<(RowDataPacket & { total: number })[]>(countSql, countParams);
     const total = countResult[0]?.total || 0;
 
     return NextResponse.json({
