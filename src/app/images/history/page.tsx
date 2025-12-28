@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import JSZip from 'jszip';
 
 interface ImageData {
   id: number;
@@ -95,6 +96,78 @@ export default function ImageHistoryPage() {
     return successImage?.imageBase64;
   };
 
+  // 개별 이미지 다운로드
+  const downloadImage = (image: ImageData, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!image.imageBase64) return;
+
+    const byteCharacters = atob(image.imageBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'image/png' });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `scene_${image.sceneId}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // 세션 전체 이미지 ZIP 다운로드
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadAllImages = async (session: SessionData, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+
+    const completedImages = session.images.filter(
+      (img) => img.status === 'completed' && img.imageBase64
+    );
+
+    if (completedImages.length === 0) {
+      alert('다운로드할 이미지가 없습니다.');
+      return;
+    }
+
+    setIsDownloading(true);
+
+    try {
+      const zip = new JSZip();
+
+      completedImages.forEach((image) => {
+        const byteCharacters = atob(image.imageBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        zip.file(`scene_${image.sceneId}.png`, byteArray);
+      });
+
+      const content = await zip.generateAsync({ type: 'blob' });
+
+      const dateStr = new Date(session.createdAt).toISOString().slice(0, 10);
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `images_${dateStr}_${session.id}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to create ZIP:', error);
+      alert('다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
@@ -183,15 +256,26 @@ export default function ImageHistoryPage() {
                             {formatDate(session.createdAt)}
                           </p>
                         </div>
-                        <button
-                          onClick={(e) => deleteSession(session.id, e)}
-                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                          title="삭제"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={(e) => downloadAllImages(session, e)}
+                            className="p-1.5 text-slate-400 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-colors"
+                            title="전체 다운로드"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => deleteSession(session.id, e)}
+                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                            title="삭제"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Stats */}
@@ -283,25 +367,41 @@ export default function ImageHistoryPage() {
                 {selectedSession.images.map((img) => (
                   <div
                     key={img.id}
-                    onClick={() => setSelectedImage(img)}
-                    className={`aspect-video rounded-lg overflow-hidden relative cursor-pointer border-2 transition-all ${
+                    className={`aspect-video rounded-lg overflow-hidden relative border-2 transition-all group ${
                       img.status === 'completed'
                         ? 'border-transparent hover:border-purple-500'
                         : 'border-red-500/50'
                     }`}
                   >
-                    {img.imageBase64 ? (
-                      <img
-                        src={`data:image/png;base64,${img.imageBase64}`}
-                        alt={`Scene ${img.sceneId}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-slate-500">
-                        {img.status === 'failed' ? '❌ 실패' : '이미지 없음'}
-                      </div>
+                    <div
+                      onClick={() => setSelectedImage(img)}
+                      className="absolute inset-0 cursor-pointer"
+                    >
+                      {img.imageBase64 ? (
+                        <img
+                          src={`data:image/png;base64,${img.imageBase64}`}
+                          alt={`Scene ${img.sceneId}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-slate-500">
+                          {img.status === 'failed' ? '❌ 실패' : '이미지 없음'}
+                        </div>
+                      )}
+                    </div>
+                    {/* Download button */}
+                    {img.imageBase64 && (
+                      <button
+                        onClick={(e) => downloadImage(img, e)}
+                        className="absolute top-2 right-2 p-1.5 bg-black/70 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/90"
+                        title="다운로드"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      </button>
                     )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 pointer-events-none">
                       <p className="text-white text-xs font-medium">Scene {img.sceneId}</p>
                       {img.description && (
                         <p className="text-slate-300 text-xs line-clamp-1">{img.description}</p>
@@ -325,22 +425,43 @@ export default function ImageHistoryPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-slate-700 flex justify-end gap-3 shrink-0">
+            <div className="p-6 border-t border-slate-700 flex justify-between shrink-0">
               <button
-                onClick={() => {
-                  deleteSession(selectedSession.id, { stopPropagation: () => {} } as React.MouseEvent);
-                  setSelectedSession(null);
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                onClick={(e) => downloadAllImages(selectedSession, e)}
+                disabled={isDownloading}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                삭제
+                {isDownloading ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                    다운로드 중...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    전체 다운로드 (ZIP)
+                  </>
+                )}
               </button>
-              <button
-                onClick={() => setSelectedSession(null)}
-                className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
-              >
-                닫기
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    deleteSession(selectedSession.id, { stopPropagation: () => {} } as React.MouseEvent);
+                    setSelectedSession(null);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  삭제
+                </button>
+                <button
+                  onClick={() => setSelectedSession(null)}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -353,14 +474,27 @@ export default function ImageHistoryPage() {
           onClick={() => setSelectedImage(null)}
         >
           <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setSelectedImage(null)}
-              className="absolute -top-12 right-0 p-2 text-white hover:text-slate-300"
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="absolute -top-12 right-0 flex gap-2">
+              {selectedImage.imageBase64 && (
+                <button
+                  onClick={() => downloadImage(selectedImage)}
+                  className="p-2 text-white hover:text-green-400 bg-black/50 rounded-lg"
+                  title="다운로드"
+                >
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="p-2 text-white hover:text-slate-300"
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             {selectedImage.imageBase64 ? (
               <img
                 src={`data:image/png;base64,${selectedImage.imageBase64}`}
