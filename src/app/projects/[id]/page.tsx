@@ -14,6 +14,7 @@ interface Project {
   status: string;
   created_at: string;
   videos: Video[];
+  imageSessions?: ImageSession[];
 }
 
 interface Video {
@@ -26,6 +27,28 @@ interface Video {
   viral_score: number;
   viral_grade: string;
   created_at: string;
+}
+
+interface GeneratedImage {
+  id: number;
+  sceneId: number;
+  sceneDescription: string;
+  imagePath: string;
+  imageBase64: string;
+  generationStatus: string;
+  createdAt: string;
+}
+
+interface ImageSession {
+  id: number;
+  projectId: number;
+  originalScript: string;
+  aspectRatio: string;
+  styleName: string;
+  totalScenes: number;
+  successfulScenes: number;
+  createdAt: string;
+  images: GeneratedImage[];
 }
 
 export default function ProjectDetailPage() {
@@ -133,7 +156,11 @@ export default function ProjectDetailPage() {
             </span>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            키워드: {project.keyword} • 생성일: {formatDate(project.created_at)}
+            키워드: {project.keyword.startsWith('chat_image_')
+              ? '채팅 이미지'
+              : project.keyword.startsWith('image_gen_')
+              ? '이미지 생성'
+              : project.keyword} • 생성일: {formatDate(project.created_at)}
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -255,6 +282,86 @@ export default function ProjectDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Generated Images - 채팅 이미지 프로젝트용 */}
+      {project.imageSessions && project.imageSessions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>생성된 이미지</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {project.imageSessions.map((session) => (
+                <div key={session.id} className="border border-gray-200 rounded-lg p-4">
+                  {/* 세션 정보 */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="info">{session.styleName}</Badge>
+                      <Badge variant="default">{session.aspectRatio}</Badge>
+                      <span className="text-sm text-gray-500">
+                        {formatRelativeTime(session.createdAt)}
+                      </span>
+                    </div>
+                    {session.originalScript && (
+                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+                        {session.originalScript}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 이미지 그리드 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {session.images.map((image) => (
+                      <div key={image.id} className="border border-gray-100 rounded-lg overflow-hidden">
+                        {/* 이미지 */}
+                        {image.imageBase64 && (
+                          <div className="aspect-video bg-gray-100">
+                            <img
+                              src={`data:image/png;base64,${image.imageBase64}`}
+                              alt={image.sceneDescription || '생성된 이미지'}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        {/* 이미지 설명 */}
+                        <div className="p-3">
+                          <p className="text-sm text-gray-700 line-clamp-3">
+                            {image.sceneDescription || '설명 없음'}
+                          </p>
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              image.generationStatus === 'completed'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {image.generationStatus === 'completed' ? '완료' : '대기중'}
+                            </span>
+                            {image.imageBase64 && (
+                              <a
+                                href={`data:image/png;base64,${image.imageBase64}`}
+                                download={`image-${image.id}.png`}
+                                className="text-xs text-blue-600 hover:text-blue-800"
+                              >
+                                다운로드
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {session.images.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">
+                      이 세션에 생성된 이미지가 없습니다.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pipeline Modal */}
       <Modal

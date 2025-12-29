@@ -104,6 +104,9 @@ export function getStatusColor(status: string): string {
   switch (status) {
     case 'completed': return 'text-green-400 bg-green-500/20';
     case 'processing': return 'text-blue-400 bg-blue-500/20';
+    case 'generating': return 'text-blue-400 bg-blue-500/20';
+    case 'analyzing': return 'text-purple-400 bg-purple-500/20';
+    case 'searching': return 'text-cyan-400 bg-cyan-500/20';
     case 'pending': return 'text-yellow-400 bg-yellow-500/20';
     case 'failed': return 'text-red-400 bg-red-500/20';
     default: return 'text-slate-400 bg-slate-500/20';
@@ -117,8 +120,11 @@ export function getStatusLabel(status: string): string {
   switch (status) {
     case 'completed': return '완료';
     case 'processing': return '처리중';
+    case 'generating': return '생성중';
+    case 'analyzing': return '분석중';
+    case 'searching': return '검색중';
     case 'pending': return '대기';
     case 'failed': return '실패';
-    default: return '알 수 없음';
+    default: return status || '알 수 없음';
   }
 }

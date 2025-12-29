@@ -1,5 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, query } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
+
+interface ImageSessionRow extends RowDataPacket {
+  id: number;
+  project_id: number;
+  original_script: string;
+  aspect_ratio: string;
+  style_name: string;
+  total_scenes: number;
+  successful_scenes: number;
+  created_at: string;
+}
+
+interface GeneratedImageRow extends RowDataPacket {
+  id: number;
+  session_id: number;
+  scene_id: number;
+  scene_description: string;
+  image_path: string;
+  image_base64: string;
+  generation_status: string;
+  created_at: string;
+}
 
 /**
  * GET /api/projects/[id] - 프로젝트 상세 조회
@@ -24,9 +47,55 @@ export async function GET(
     // 관련 영상 목록도 함께 조회
     const videos = await db.selectedVideos.findByProjectId(projectId);
 
+    // 채팅 이미지 프로젝트인 경우 이미지 세션과 생성된 이미지도 조회
+    let imageSessions: ImageSessionRow[] = [];
+    let generatedImages: GeneratedImageRow[] = [];
+
+    // 이미지 세션 조회
+    imageSessions = await query<ImageSessionRow[]>(
+      `SELECT * FROM image_generation_sessions WHERE project_id = ? ORDER BY created_at DESC`,
+      [projectId]
+    );
+
+    // 각 세션의 이미지 조회
+    if (imageSessions.length > 0) {
+      const sessionIds = imageSessions.map(s => s.id);
+      generatedImages = await query<GeneratedImageRow[]>(
+        `SELECT * FROM generated_images WHERE session_id IN (${sessionIds.join(',')}) ORDER BY scene_id`,
+        []
+      );
+    }
+
+    // 세션별로 이미지 그룹화
+    const sessionsWithImages = imageSessions.map(session => ({
+      id: session.id,
+      projectId: session.project_id,
+      originalScript: session.original_script,
+      aspectRatio: session.aspect_ratio,
+      styleName: session.style_name,
+      totalScenes: session.total_scenes,
+      successfulScenes: session.successful_scenes,
+      createdAt: session.created_at,
+      images: generatedImages
+        .filter(img => img.session_id === session.id)
+        .map(img => ({
+          id: img.id,
+          sceneId: img.scene_id,
+          sceneDescription: img.scene_description,
+          imagePath: img.image_path,
+          imageBase64: img.image_base64,
+          generationStatus: img.generation_status,
+          createdAt: img.created_at,
+        })),
+    }));
+
     return NextResponse.json({
       success: true,
-      data: { ...project, videos },
+      data: {
+        ...project,
+        videos,
+        imageSessions: sessionsWithImages,
+      },
     });
   } catch (error: any) {
     console.error('Error fetching project:', error);
