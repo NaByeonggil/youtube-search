@@ -116,3 +116,113 @@ export async function DELETE(
     );
   }
 }
+
+interface BlogSection {
+  heading: string;
+  content: string;
+}
+
+interface UpdateBlogRequest {
+  blogTitle?: string;
+  metaDescription?: string;
+  introduction?: string;
+  sections?: BlogSection[];
+  conclusion?: string;
+  tags?: string[];
+  estimatedReadTime?: string;
+  customTarget?: string;
+  toneAndManner?: string;
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const blogId = parseInt(id);
+
+    if (isNaN(blogId)) {
+      return NextResponse.json(
+        { success: false, error: '유효하지 않은 블로그 ID입니다.' },
+        { status: 400 }
+      );
+    }
+
+    const existingBlog = await db.generatedBlogs.findById(blogId);
+    if (!existingBlog) {
+      return NextResponse.json(
+        { success: false, error: '블로그를 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    const body: UpdateBlogRequest = await request.json();
+
+    // Calculate word count if content fields are updated
+    let wordCount: number | undefined;
+    if (body.introduction !== undefined || body.sections !== undefined || body.conclusion !== undefined) {
+      const introduction = body.introduction ?? (existingBlog as BlogRow).introduction ?? '';
+      const sections = body.sections ?? (
+        typeof (existingBlog as BlogRow).sections === 'string'
+          ? JSON.parse((existingBlog as BlogRow).sections)
+          : (existingBlog as BlogRow).sections
+      ) ?? [];
+      const conclusion = body.conclusion ?? (existingBlog as BlogRow).conclusion ?? '';
+
+      const sectionsText = sections.map((s: BlogSection) => `${s.heading} ${s.content}`).join(' ');
+      wordCount = (introduction + sectionsText + conclusion).length;
+    }
+
+    await db.generatedBlogs.update(blogId, {
+      blogTitle: body.blogTitle,
+      metaDescription: body.metaDescription,
+      introduction: body.introduction,
+      sections: body.sections,
+      conclusion: body.conclusion,
+      tags: body.tags,
+      estimatedReadTime: body.estimatedReadTime,
+      customTarget: body.customTarget,
+      toneAndManner: body.toneAndManner,
+      wordCount,
+    });
+
+    // Fetch updated blog
+    const updatedBlog = await db.generatedBlogs.findById(blogId) as BlogRow;
+
+    return NextResponse.json({
+      success: true,
+      message: '블로그가 수정되었습니다.',
+      data: {
+        id: updatedBlog.id,
+        sourceVideoId: updatedBlog.source_video_id,
+        sourceVideoTitle: updatedBlog.source_video_title,
+        sourceChannelName: updatedBlog.source_channel_name,
+        ideaTitle: updatedBlog.idea_title,
+        ideaDescription: updatedBlog.idea_description,
+        ideaTargetAudience: updatedBlog.idea_target_audience,
+        blogTitle: updatedBlog.blog_title,
+        metaDescription: updatedBlog.meta_description,
+        introduction: updatedBlog.introduction,
+        sections: typeof updatedBlog.sections === 'string' ? JSON.parse(updatedBlog.sections) : updatedBlog.sections,
+        conclusion: updatedBlog.conclusion,
+        tags: typeof updatedBlog.tags === 'string' ? JSON.parse(updatedBlog.tags) : updatedBlog.tags,
+        estimatedReadTime: updatedBlog.estimated_read_time,
+        customTarget: updatedBlog.custom_target,
+        toneAndManner: updatedBlog.tone_and_manner,
+        wordCount: updatedBlog.word_count,
+        createdAt: updatedBlog.created_at,
+        updatedAt: updatedBlog.updated_at,
+      },
+    });
+  } catch (error) {
+    console.error('Blog update error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : '블로그 수정 중 오류가 발생했습니다.',
+      },
+      { status: 500 }
+    );
+  }
+}

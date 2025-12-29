@@ -703,6 +703,75 @@ export const db = {
     async delete(id: number) {
       return execute(`DELETE FROM generated_blogs WHERE id = ?`, [id]);
     },
+
+    async update(id: number, data: {
+      blogTitle?: string;
+      metaDescription?: string;
+      introduction?: string;
+      sections?: unknown[];
+      conclusion?: string;
+      tags?: string[];
+      estimatedReadTime?: string;
+      customTarget?: string;
+      toneAndManner?: string;
+      wordCount?: number;
+    }) {
+      const fields: string[] = [];
+      const values: unknown[] = [];
+
+      if (data.blogTitle !== undefined) {
+        fields.push('blog_title = ?');
+        values.push(data.blogTitle);
+      }
+      if (data.metaDescription !== undefined) {
+        fields.push('meta_description = ?');
+        values.push(data.metaDescription);
+      }
+      if (data.introduction !== undefined) {
+        fields.push('introduction = ?');
+        values.push(data.introduction);
+      }
+      if (data.sections !== undefined) {
+        fields.push('sections = ?');
+        values.push(JSON.stringify(data.sections));
+      }
+      if (data.conclusion !== undefined) {
+        fields.push('conclusion = ?');
+        values.push(data.conclusion);
+      }
+      if (data.tags !== undefined) {
+        fields.push('tags = ?');
+        values.push(JSON.stringify(data.tags));
+      }
+      if (data.estimatedReadTime !== undefined) {
+        fields.push('estimated_read_time = ?');
+        values.push(data.estimatedReadTime);
+      }
+      if (data.customTarget !== undefined) {
+        fields.push('custom_target = ?');
+        values.push(data.customTarget);
+      }
+      if (data.toneAndManner !== undefined) {
+        fields.push('tone_and_manner = ?');
+        values.push(data.toneAndManner);
+      }
+      if (data.wordCount !== undefined) {
+        fields.push('word_count = ?');
+        values.push(data.wordCount);
+      }
+
+      if (fields.length === 0) {
+        throw new Error('No fields to update');
+      }
+
+      fields.push('updated_at = NOW()');
+      values.push(id);
+
+      return execute(
+        `UPDATE generated_blogs SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      );
+    },
   },
 };
 

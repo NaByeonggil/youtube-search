@@ -62,6 +62,8 @@ export default function BlogHistoryPage() {
   const [selectedRecord, setSelectedRecord] = useState<BlogRecord | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [editingRecord, setEditingRecord] = useState<BlogRecord | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const fetchRecords = async (offset = 0, searchQuery = '') => {
     setLoading(true);
@@ -146,6 +148,70 @@ ${record.conclusion}
 `;
     navigator.clipboard.writeText(fullText);
     alert('블로그가 클립보드에 복사되었습니다!');
+  };
+
+  const handleEdit = (record: BlogRecord) => {
+    setEditingRecord({ ...record });
+    setSelectedRecord(null);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingRecord) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/blog/${editingRecord.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blogTitle: editingRecord.blogTitle,
+          metaDescription: editingRecord.metaDescription,
+          introduction: editingRecord.introduction,
+          sections: editingRecord.sections,
+          conclusion: editingRecord.conclusion,
+          tags: editingRecord.tags,
+          estimatedReadTime: editingRecord.estimatedReadTime,
+          customTarget: editingRecord.customTarget,
+          toneAndManner: editingRecord.toneAndManner,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setRecords(prev =>
+          prev.map(r => (r.id === editingRecord.id ? data.data : r))
+        );
+        setEditingRecord(null);
+        alert('블로그가 수정되었습니다.');
+      } else {
+        alert(data.error || '수정에 실패했습니다.');
+      }
+    } catch {
+      alert('수정 중 오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateEditingSection = (index: number, field: 'heading' | 'content', value: string) => {
+    if (!editingRecord) return;
+    const newSections = [...editingRecord.sections];
+    newSections[index] = { ...newSections[index], [field]: value };
+    setEditingRecord({ ...editingRecord, sections: newSections });
+  };
+
+  const addSection = () => {
+    if (!editingRecord) return;
+    setEditingRecord({
+      ...editingRecord,
+      sections: [...editingRecord.sections, { heading: '', content: '' }],
+    });
+  };
+
+  const removeSection = (index: number) => {
+    if (!editingRecord) return;
+    const newSections = editingRecord.sections.filter((_, i) => i !== index);
+    setEditingRecord({ ...editingRecord, sections: newSections });
   };
 
   return (
@@ -355,6 +421,17 @@ ${record.conclusion}
                             variant="ghost"
                             onClick={(e) => {
                               e.stopPropagation();
+                              handleEdit(record);
+                            }}
+                            className="text-blue-400 hover:text-blue-300"
+                          >
+                            편집
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               handleDelete(record.id);
                             }}
                             disabled={deleting === record.id}
@@ -503,6 +580,13 @@ ${record.conclusion}
                 </Button>
                 <Button
                   variant="outline"
+                  className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
+                  onClick={() => handleEdit(selectedRecord)}
+                >
+                  ✏️ 편집
+                </Button>
+                <Button
+                  variant="outline"
                   className="text-red-400 border-red-400 hover:bg-red-400/10"
                   onClick={() => {
                     handleDelete(selectedRecord.id);
@@ -513,6 +597,199 @@ ${record.conclusion}
                 </Button>
                 <Button onClick={() => setSelectedRecord(null)}>
                   닫기
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 편집 모달 */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* 모달 헤더 */}
+            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 flex items-center justify-between z-10">
+              <h2 className="text-lg font-semibold text-white">블로그 편집</h2>
+              <button
+                onClick={() => setEditingRecord(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* 블로그 제목 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  블로그 제목 *
+                </label>
+                <input
+                  type="text"
+                  value={editingRecord.blogTitle}
+                  onChange={(e) => setEditingRecord({ ...editingRecord, blogTitle: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                  placeholder="블로그 제목을 입력하세요"
+                />
+              </div>
+
+              {/* 메타 설명 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  메타 설명
+                </label>
+                <textarea
+                  value={editingRecord.metaDescription || ''}
+                  onChange={(e) => setEditingRecord({ ...editingRecord, metaDescription: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 resize-none"
+                  placeholder="검색 엔진에 표시될 설명을 입력하세요"
+                />
+              </div>
+
+              {/* 서론 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  서론
+                </label>
+                <textarea
+                  value={editingRecord.introduction || ''}
+                  onChange={(e) => setEditingRecord({ ...editingRecord, introduction: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 resize-none"
+                  placeholder="서론을 입력하세요"
+                />
+              </div>
+
+              {/* 본문 섹션들 */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-slate-300">본문 섹션</label>
+                  <Button size="sm" variant="outline" onClick={addSection}>
+                    + 섹션 추가
+                  </Button>
+                </div>
+                <div className="space-y-4">
+                  {editingRecord.sections?.map((section, idx) => (
+                    <div key={idx} className="bg-slate-700/50 border border-slate-600 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm text-slate-400">섹션 {idx + 1}</span>
+                        <button
+                          onClick={() => removeSection(idx)}
+                          className="text-red-400 hover:text-red-300 text-sm"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={section.heading}
+                        onChange={(e) => updateEditingSection(idx, 'heading', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 mb-3"
+                        placeholder="섹션 제목"
+                      />
+                      <textarea
+                        value={section.content}
+                        onChange={(e) => updateEditingSection(idx, 'content', e.target.value)}
+                        rows={4}
+                        className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 resize-none"
+                        placeholder="섹션 내용"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 결론 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  결론
+                </label>
+                <textarea
+                  value={editingRecord.conclusion || ''}
+                  onChange={(e) => setEditingRecord({ ...editingRecord, conclusion: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 resize-none"
+                  placeholder="결론을 입력하세요"
+                />
+              </div>
+
+              {/* 태그 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  태그 (쉼표로 구분)
+                </label>
+                <input
+                  type="text"
+                  value={editingRecord.tags?.join(', ') || ''}
+                  onChange={(e) => setEditingRecord({
+                    ...editingRecord,
+                    tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+                  })}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                  placeholder="태그1, 태그2, 태그3"
+                />
+              </div>
+
+              {/* 생성 옵션 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    타겟 독자
+                  </label>
+                  <input
+                    type="text"
+                    value={editingRecord.customTarget || ''}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, customTarget: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                    placeholder="타겟 독자"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    톤앤매너
+                  </label>
+                  <input
+                    type="text"
+                    value={editingRecord.toneAndManner || ''}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, toneAndManner: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                    placeholder="톤앤매너"
+                  />
+                </div>
+              </div>
+
+              {/* 예상 읽기 시간 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  예상 읽기 시간
+                </label>
+                <input
+                  type="text"
+                  value={editingRecord.estimatedReadTime || ''}
+                  onChange={(e) => setEditingRecord({ ...editingRecord, estimatedReadTime: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                  placeholder="예: 약 5분"
+                />
+              </div>
+
+              {/* 액션 버튼 */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-700">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditingRecord(null)}
+                  disabled={saving}
+                >
+                  취소
+                </Button>
+                <Button
+                  onClick={handleUpdate}
+                  disabled={saving || !editingRecord.blogTitle.trim()}
+                >
+                  {saving ? '저장 중...' : '저장'}
                 </Button>
               </div>
             </div>
