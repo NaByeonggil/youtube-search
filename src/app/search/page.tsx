@@ -131,6 +131,11 @@ export default function SearchPage() {
   const [scriptTarget, setScriptTarget] = useState('');
   const [scriptTone, setScriptTone] = useState('');
   const [workflowError, setWorkflowError] = useState('');
+  const [blogSaveResult, setBlogSaveResult] = useState<{
+    success: boolean;
+    message: string;
+    blogId?: number;
+  } | null>(null);
 
   const handleAnalyze = async (video: VideoResult) => {
     setAnalyzing(video.videoId);
@@ -309,6 +314,7 @@ export default function SearchPage() {
 
     setWorkflowStep('analyzing');
     setWorkflowError('');
+    setBlogSaveResult(null);
 
     try {
       const response = await fetch('/api/blog/generate', {
@@ -329,7 +335,7 @@ export default function SearchPage() {
 
         // 블로그 DB 저장
         try {
-          await fetch('/api/blog/save', {
+          const saveRes = await fetch('/api/blog/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -350,8 +356,25 @@ export default function SearchPage() {
               },
             }),
           });
+          const saveData = await saveRes.json();
+          if (saveData.success) {
+            setBlogSaveResult({
+              success: true,
+              message: '블로그가 DB에 저장되었습니다!',
+              blogId: saveData.data?.id,
+            });
+          } else {
+            setBlogSaveResult({
+              success: false,
+              message: saveData.error || '블로그 저장에 실패했습니다.',
+            });
+          }
         } catch (saveError) {
           console.error('블로그 저장 오류:', saveError);
+          setBlogSaveResult({
+            success: false,
+            message: '블로그 저장 중 오류가 발생했습니다.',
+          });
         }
       } else {
         setWorkflowError(data.error || '블로그 생성에 실패했습니다.');
@@ -395,6 +418,7 @@ ${blogPost.conclusion}
     setScriptTarget('');
     setScriptTone('');
     setWorkflowError('');
+    setBlogSaveResult(null);
   };
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -1140,6 +1164,37 @@ ${blogPost.conclusion}
                     <span className="text-sm">아이디어 목록으로</span>
                   </button>
 
+                  {/* DB 저장 결과 메시지 */}
+                  {blogSaveResult && (
+                    <div className={`p-4 rounded-lg border ${
+                      blogSaveResult.success
+                        ? 'bg-green-500/10 border-green-500/50'
+                        : 'bg-red-500/10 border-red-500/50'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          {blogSaveResult.success ? (
+                            <span className="text-green-400 text-lg">✅</span>
+                          ) : (
+                            <span className="text-red-400 text-lg">❌</span>
+                          )}
+                          <span className={blogSaveResult.success ? 'text-green-400' : 'text-red-400'}>
+                            {blogSaveResult.message}
+                          </span>
+                        </div>
+                        {blogSaveResult.success && (
+                          <button
+                            onClick={() => router.push('/blog/history')}
+                            className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
+                          >
+                            <span>📚</span>
+                            <span>블로그 히스토리 보기</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* 블로그 헤더 */}
                   <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-6 border border-blue-500/30">
                     <h3 className="text-xl font-bold text-white mb-2">{blogPost.title}</h3>
@@ -1256,22 +1311,33 @@ ${blogPost.conclusion}
 
             {/* 모달 푸터 - 블로그 */}
             {workflowStep === 'blog' && (
-              <div className="p-6 border-t border-slate-700 flex justify-end space-x-3">
+              <div className="p-6 border-t border-slate-700 flex justify-between">
                 <button
                   onClick={closeModal}
                   className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
                 >
                   닫기
                 </button>
-                <button
-                  onClick={handleCopyBlog}
-                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity flex items-center space-x-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  <span>블로그 복사하기</span>
-                </button>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleCopyBlog}
+                    className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors flex items-center space-x-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span>복사하기</span>
+                  </button>
+                  {blogSaveResult?.success && (
+                    <button
+                      onClick={() => router.push('/blog/history')}
+                      className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity flex items-center space-x-2"
+                    >
+                      <span>📚</span>
+                      <span>블로그 히스토리 보기</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

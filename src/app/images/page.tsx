@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react';
 
+type InputMode = 'text' | 'youtube';
+
 // PRD 스펙에 따른 화면 비율
 const ASPECT_RATIOS = {
   '16:9': { label: '가로형 (16:9)', description: 'YouTube, 영상용' },
@@ -72,6 +74,16 @@ export default function ScriptToImagePage() {
   const [style, setStyle] = useState<keyof typeof STYLES>('photorealistic');
   const [maxScenes, setMaxScenes] = useState(10);
 
+  // 유튜브 URL 입력 관련 상태
+  const [inputMode, setInputMode] = useState<InputMode>('text');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
+  const [transcriptInfo, setTranscriptInfo] = useState<{
+    videoId: string;
+    language: string;
+    duration: string;
+  } | null>(null);
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -100,6 +112,52 @@ export default function ScriptToImagePage() {
       setScript(text);
     };
     reader.readAsText(file, 'UTF-8');
+  };
+
+  // 유튜브 자막 가져오기
+  const fetchYoutubeTranscript = async () => {
+    if (!youtubeUrl.trim()) {
+      setError('유튜브 URL을 입력해주세요.');
+      return;
+    }
+
+    setIsLoadingTranscript(true);
+    setError(null);
+    setTranscriptInfo(null);
+
+    try {
+      const response = await fetch('/api/youtube/transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: youtubeUrl,
+          includeTimestamps: false,
+          language: 'ko',
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setScript(result.data.transcript);
+        setTranscriptInfo({
+          videoId: result.data.videoId,
+          language: result.data.language,
+          duration: result.data.estimatedDuration,
+        });
+        setInputMode('text'); // 성공 후 텍스트 모드로 전환하여 수정 가능하게
+      } else {
+        if (result.needsWhisper) {
+          setError(`${result.error}\n\n현재 Whisper 음성 인식은 지원되지 않습니다. 자막이 있는 영상을 사용해주세요.`);
+        } else {
+          setError(result.error || '자막을 가져오는 중 오류가 발생했습니다.');
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || '자막을 가져오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoadingTranscript(false);
+    }
   };
 
   // 대본 분석
@@ -356,6 +414,9 @@ export default function ScriptToImagePage() {
     setError(null);
     setCurrentScene(0);
     setSaveResult(null);
+    setInputMode('text');
+    setYoutubeUrl('');
+    setTranscriptInfo(null);
   };
 
   const successCount = results.filter((r) => r.status === 'success').length;
@@ -448,28 +509,97 @@ export default function ScriptToImagePage() {
             <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
               <h2 className="text-lg font-bold text-white mb-4">1. 대본 입력</h2>
 
-              {/* 파일 업로드 */}
-              <div className="mb-4">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".txt"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
+              {/* 입력 모드 선택 탭 */}
+              <div className="flex mb-4 bg-slate-900 rounded-lg p-1">
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+                  onClick={() => setInputMode('text')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    inputMode === 'text'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                 >
-                  📁 TXT 파일 불러오기
+                  📝 직접 입력 / 파일
+                </button>
+                <button
+                  onClick={() => setInputMode('youtube')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    inputMode === 'youtube'
+                      ? 'bg-red-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  ▶️ YouTube 자막
                 </button>
               </div>
+
+              {/* 유튜브 URL 입력 모드 */}
+              {inputMode === 'youtube' && (
+                <div className="mb-4 p-4 bg-slate-900 rounded-lg border border-slate-700">
+                  <label className="block text-sm text-slate-300 mb-2">
+                    YouTube 영상 URL을 입력하면 자막을 자동으로 가져옵니다
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={youtubeUrl}
+                      onChange={(e) => setYoutubeUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      className="flex-1 px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                    <button
+                      onClick={fetchYoutubeTranscript}
+                      disabled={isLoadingTranscript || !youtubeUrl.trim()}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {isLoadingTranscript ? (
+                        <span className="flex items-center gap-2">
+                          <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                          가져오는 중...
+                        </span>
+                      ) : (
+                        '자막 가져오기'
+                      )}
+                    </button>
+                  </div>
+                  {transcriptInfo && (
+                    <div className="mt-3 p-3 bg-green-900/30 border border-green-700 rounded-lg text-sm text-green-300">
+                      ✅ 자막을 성공적으로 가져왔습니다!
+                      <div className="mt-1 text-green-400/70 text-xs">
+                        영상 ID: {transcriptInfo.videoId} | 언어: {transcriptInfo.language} | 길이: {transcriptInfo.duration}
+                      </div>
+                    </div>
+                  )}
+                  <p className="mt-2 text-xs text-slate-500">
+                    * 자막이 있는 영상만 지원됩니다. 한국어 → 영어 → 일본어 순으로 자막을 찾습니다.
+                  </p>
+                </div>
+              )}
+
+              {/* 파일 업로드 (텍스트 모드일 때만) */}
+              {inputMode === 'text' && (
+                <div className="mb-4">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+                  >
+                    📁 TXT 파일 불러오기
+                  </button>
+                </div>
+              )}
 
               {/* 텍스트 입력 */}
               <textarea
                 value={script}
                 onChange={(e) => setScript(e.target.value)}
-                placeholder="대본을 입력하세요 (최대 1만자)..."
+                placeholder={inputMode === 'youtube' && !script ? '위에서 YouTube URL을 입력하고 자막을 가져오세요...' : '대본을 입력하세요 (최대 1만자)...'}
                 className="w-full h-80 p-4 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
               />
 
