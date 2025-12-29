@@ -81,6 +81,16 @@ export default function ContentIdeasHistoryPage() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [generatingBlog, setGeneratingBlog] = useState<number | null>(null);
+
+  // 블로그 생성 옵션 모달 상태
+  const [showBlogModal, setShowBlogModal] = useState(false);
+  const [blogTargetWorkflow, setBlogTargetWorkflow] = useState<Workflow | null>(null);
+  const [blogOptions, setBlogOptions] = useState({
+    customTarget: '',
+    toneAndManner: '',
+    keywords: '',
+  });
 
   useEffect(() => {
     fetchWorkflows();
@@ -124,6 +134,95 @@ export default function ContentIdeasHistoryPage() {
       alert('삭제 중 오류가 발생했습니다.');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  // 블로그 생성 모달 열기
+  const openBlogModal = (workflow: Workflow) => {
+    if (!workflow.selectedIdea) {
+      alert('선택된 아이디어가 없습니다. 먼저 아이디어를 선택해주세요.');
+      return;
+    }
+    setBlogTargetWorkflow(workflow);
+    setBlogOptions({
+      customTarget: workflow.selectedIdea.targetAudience || '',
+      toneAndManner: '',
+      keywords: '',
+    });
+    setShowBlogModal(true);
+    setShowDetailModal(false);
+  };
+
+  // 블로그 생성 실행
+  const handleGenerateBlog = async () => {
+    if (!blogTargetWorkflow || !blogTargetWorkflow.selectedIdea) {
+      alert('선택된 아이디어가 없습니다.');
+      return;
+    }
+
+    const workflow = blogTargetWorkflow;
+    const selectedIdea = workflow.selectedIdea!;
+    setGeneratingBlog(workflow.id);
+    setShowBlogModal(false);
+
+    try {
+      // 블로그 생성 API 호출
+      const res = await fetch('/api/blog/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contentIdea: {
+            id: workflow.id,
+            title: selectedIdea.title,
+            description: selectedIdea.description,
+            targetAudience: selectedIdea.targetAudience,
+            estimatedViralScore: selectedIdea.estimatedViralScore as '상' | '중' | '하',
+            reasoning: selectedIdea.reasoning,
+            suggestedFormat: selectedIdea.suggestedFormat as '숏폼' | '롱폼',
+          },
+          customTarget: blogOptions.customTarget || undefined,
+          toneAndManner: blogOptions.toneAndManner || undefined,
+          additionalContext: blogOptions.keywords ? `키워드: ${blogOptions.keywords}` : undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // 블로그 생성 성공 - 생성된 블로그를 저장
+        const saveRes = await fetch('/api/blog/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceVideoId: workflow.sourceVideo.videoId,
+            sourceVideoTitle: workflow.sourceVideo.title,
+            sourceChannelName: workflow.sourceVideo.channelTitle,
+            ideaTitle: selectedIdea.title,
+            ideaDescription: selectedIdea.description,
+            ideaTargetAudience: selectedIdea.targetAudience,
+            blogPost: data.data.blogPost,
+            customTarget: blogOptions.customTarget || undefined,
+            toneAndManner: blogOptions.toneAndManner || undefined,
+          }),
+        });
+
+        const saveData = await saveRes.json();
+
+        if (saveData.success) {
+          alert('블로그가 생성되어 저장되었습니다!');
+          router.push('/blog/history');
+        } else {
+          alert('블로그는 생성되었지만 저장에 실패했습니다: ' + (saveData.error || ''));
+        }
+      } else {
+        alert('블로그 생성에 실패했습니다: ' + (data.error || ''));
+      }
+    } catch (err) {
+      alert('블로그 생성 중 오류가 발생했습니다.');
+      console.error('Blog generation error:', err);
+    } finally {
+      setGeneratingBlog(null);
+      setBlogTargetWorkflow(null);
     }
   };
 
@@ -286,6 +385,17 @@ export default function ContentIdeasHistoryPage() {
                     >
                       이어서 작업
                     </Button>
+                    {workflow.selectedIdea && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openBlogModal(workflow)}
+                        disabled={generatingBlog === workflow.id}
+                        className="text-purple-400 border-purple-400 hover:bg-purple-500/10"
+                      >
+                        {generatingBlog === workflow.id ? '생성 중...' : '📝 블로그 생성'}
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -332,6 +442,115 @@ export default function ContentIdeasHistoryPage() {
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 블로그 생성 옵션 모달 */}
+      {showBlogModal && blogTargetWorkflow && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-lg overflow-hidden">
+            {/* 모달 헤더 */}
+            <div className="p-6 border-b border-slate-700">
+              <h2 className="text-xl font-bold text-white">📝 블로그 생성 옵션</h2>
+              <p className="text-sm text-slate-400 mt-1">
+                블로그 생성 시 적용할 옵션을 설정하세요.
+              </p>
+            </div>
+
+            {/* 선택된 아이디어 정보 */}
+            {blogTargetWorkflow.selectedIdea && (
+              <div className="px-6 pt-4">
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+                  <h4 className="text-purple-400 font-medium text-sm mb-1">선택된 아이디어</h4>
+                  <p className="text-white font-semibold">{blogTargetWorkflow.selectedIdea.title}</p>
+                  <p className="text-slate-400 text-sm mt-1 line-clamp-2">
+                    {blogTargetWorkflow.selectedIdea.description}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 옵션 입력 */}
+            <div className="p-6 space-y-4">
+              {/* 타겟 독자 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  🎯 타겟 독자
+                </label>
+                <input
+                  type="text"
+                  value={blogOptions.customTarget}
+                  onChange={(e) => setBlogOptions(prev => ({ ...prev, customTarget: e.target.value }))}
+                  placeholder="예: 20-30대 직장인, 마케팅 초보자, 주부"
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  블로그의 주요 독자층을 지정하세요.
+                </p>
+              </div>
+
+              {/* 분위기/톤앤매너 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  🎭 분위기 (톤앤매너)
+                </label>
+                <select
+                  value={blogOptions.toneAndManner}
+                  onChange={(e) => setBlogOptions(prev => ({ ...prev, toneAndManner: e.target.value }))}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                >
+                  <option value="">선택하세요 (기본: 친근한)</option>
+                  <option value="친근하고 편안한">친근하고 편안한</option>
+                  <option value="전문적이고 신뢰감있는">전문적이고 신뢰감있는</option>
+                  <option value="유머러스하고 재미있는">유머러스하고 재미있는</option>
+                  <option value="감성적이고 공감가는">감성적이고 공감가는</option>
+                  <option value="간결하고 핵심적인">간결하고 핵심적인</option>
+                  <option value="열정적이고 동기부여하는">열정적이고 동기부여하는</option>
+                  <option value="차분하고 설명적인">차분하고 설명적인</option>
+                </select>
+                <p className="text-xs text-slate-500 mt-1">
+                  블로그 글의 전반적인 분위기를 선택하세요.
+                </p>
+              </div>
+
+              {/* 키워드 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  🏷️ 키워드
+                </label>
+                <input
+                  type="text"
+                  value={blogOptions.keywords}
+                  onChange={(e) => setBlogOptions(prev => ({ ...prev, keywords: e.target.value }))}
+                  placeholder="예: SEO, 디지털마케팅, 브랜딩 (쉼표로 구분)"
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  블로그에 포함할 주요 키워드를 입력하세요.
+                </p>
+              </div>
+            </div>
+
+            {/* 모달 푸터 */}
+            <div className="p-6 border-t border-slate-700 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowBlogModal(false);
+                  setBlogTargetWorkflow(null);
+                }}
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleGenerateBlog}
+                disabled={generatingBlog !== null}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {generatingBlog ? '생성 중...' : '블로그 생성'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -439,6 +658,16 @@ export default function ContentIdeasHistoryPage() {
               <Button variant="outline" onClick={() => setShowDetailModal(false)}>
                 닫기
               </Button>
+              {selectedWorkflow.selectedIdea && (
+                <Button
+                  variant="outline"
+                  onClick={() => openBlogModal(selectedWorkflow)}
+                  disabled={generatingBlog === selectedWorkflow.id}
+                  className="text-purple-400 border-purple-400 hover:bg-purple-500/10"
+                >
+                  {generatingBlog === selectedWorkflow.id ? '생성 중...' : '📝 블로그 생성'}
+                </Button>
+              )}
               <Button onClick={() => {
                 setShowDetailModal(false);
                 handleContinue(selectedWorkflow);
