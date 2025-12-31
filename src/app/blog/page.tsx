@@ -207,31 +207,45 @@ export default function BlogPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: generatedBlog.title,
-          metaDescription: generatedBlog.metaDescription,
-          introduction: generatedBlog.introduction,
-          sections: generatedBlog.sections,
-          conclusion: generatedBlog.conclusion,
-          tags: generatedBlog.tags,
-          estimatedReadTime: generatedBlog.estimatedReadTime,
-          youtubeVideoId: analysisContext?.videoId,
-          contentIdeaTitle: topic,
+          blogPost: {
+            title: generatedBlog.title,
+            metaDescription: generatedBlog.metaDescription,
+            introduction: generatedBlog.introduction,
+            sections: generatedBlog.sections,
+            conclusion: generatedBlog.conclusion,
+            tags: generatedBlog.tags,
+            estimatedReadTime: generatedBlog.estimatedReadTime,
+          },
+          sourceVideo: analysisContext ? {
+            videoId: analysisContext.videoId,
+            title: analysisContext.videoTitle,
+            channelName: analysisContext.channelName,
+          } : undefined,
+          idea: {
+            title: topic,
+            description: '',
+            targetAudience: blogOptions.targetAudience || '일반 독자',
+          },
+          options: {
+            customTarget: blogOptions.targetAudience || undefined,
+            toneAndManner: blogOptions.toneAndManner || undefined,
+          },
         }),
       });
 
       const data = await res.json();
 
-      if (data.success) {
-        setSavedBlogId(data.blogId);
+      if (data.success && data.data?.id) {
+        setSavedBlogId(data.data.id);
         const saveMessage: Message = {
           id: Date.now().toString(),
           role: 'system',
-          content: `블로그가 성공적으로 저장되었습니다! (ID: ${data.blogId})`,
+          content: `블로그가 성공적으로 저장되었습니다! (ID: ${data.data.id})`,
           timestamp: new Date(),
         };
         setMessages(prev => [...prev, saveMessage]);
       } else {
-        alert(`저장 실패: ${data.error}`);
+        alert(`저장 실패: ${data.error || '알 수 없는 오류'}`);
       }
     } catch {
       alert('저장 중 오류가 발생했습니다.');
