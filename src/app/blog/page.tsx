@@ -162,14 +162,15 @@ export default function BlogPage() {
 
       const data = await res.json();
 
-      if (data.success && data.blog) {
-        setGeneratedBlog(data.blog);
-        setTopic(data.blog.title);
+      if (data.success && data.data?.blogPost) {
+        const blog = data.data.blogPost;
+        setGeneratedBlog(blog);
+        setTopic(blog.title);
 
         const assistantMessage: Message = {
           id: Date.now().toString(),
           role: 'assistant',
-          content: `블로그 글이 생성되었습니다!\n\n**제목**: ${data.blog.title}\n**예상 읽기 시간**: ${data.blog.estimatedReadTime}\n**태그**: ${data.blog.tags?.join(', ')}\n\n[블로그 보기] 버튼을 클릭하여 전체 내용을 확인하세요.`,
+          content: `블로그 글이 생성되었습니다!\n\n**제목**: ${blog.title}\n**예상 읽기 시간**: ${blog.estimatedReadTime}\n**태그**: ${blog.tags?.join(', ')}\n\n[블로그 보기] 버튼을 클릭하여 전체 내용을 확인하세요.`,
           timestamp: new Date(),
         };
         setMessages(prev => [...prev, assistantMessage]);
