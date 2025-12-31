@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, Button } from '@/components/ui';
 
 interface AnalysisRecord {
@@ -71,6 +72,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function AnalysisHistoryPage() {
+  const router = useRouter();
   const [records, setRecords] = useState<AnalysisRecord[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,40 @@ export default function AnalysisHistoryPage() {
   const [selectedRecord, setSelectedRecord] = useState<AnalysisRecord | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
   const [deleting, setDeleting] = useState<number | null>(null);
+
+  // 대본 만들기 페이지로 이동
+  const handleGoToScript = (record: AnalysisRecord) => {
+    sessionStorage.setItem('analysisContext', JSON.stringify({
+      type: 'comment-analysis',
+      videoId: record.youtubeVideoId,
+      videoTitle: record.videoTitle,
+      channelName: record.channelName,
+      thumbnailUrl: record.thumbnailUrl,
+      positiveSummary: record.positiveSummary,
+      negativeSummary: record.negativeSummary,
+      positiveKeywords: record.positiveKeywords,
+      negativeKeywords: record.negativeKeywords,
+      improvementSuggestions: record.improvementSuggestions,
+    }));
+    router.push('/scripts');
+  };
+
+  // 블로그 만들기 페이지로 이동
+  const handleGoToBlog = (record: AnalysisRecord) => {
+    sessionStorage.setItem('analysisContext', JSON.stringify({
+      type: 'comment-analysis',
+      videoId: record.youtubeVideoId,
+      videoTitle: record.videoTitle,
+      channelName: record.channelName,
+      thumbnailUrl: record.thumbnailUrl,
+      positiveSummary: record.positiveSummary,
+      negativeSummary: record.negativeSummary,
+      positiveKeywords: record.positiveKeywords,
+      negativeKeywords: record.negativeKeywords,
+      improvementSuggestions: record.improvementSuggestions,
+    }));
+    router.push('/blog');
+  };
 
   const fetchRecords = async (offset = 0, searchQuery = '') => {
     setLoading(true);
@@ -538,6 +574,24 @@ export default function AnalysisHistoryPage() {
                   <p className="text-slate-300">{selectedRecord.improvementSuggestions}</p>
                 </div>
               )}
+
+              {/* 콘텐츠 생성 버튼 */}
+              <div className="flex items-center space-x-3 pt-4 border-t border-slate-700">
+                <Button
+                  onClick={() => handleGoToScript(selectedRecord)}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                >
+                  <span className="mr-2">📝</span>
+                  대본 만들기
+                </Button>
+                <Button
+                  onClick={() => handleGoToBlog(selectedRecord)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  <span className="mr-2">📰</span>
+                  블로그 만들기
+                </Button>
+              </div>
 
               {/* 메타 정보 */}
               <div className="text-xs text-slate-500 pt-4 border-t border-slate-700">

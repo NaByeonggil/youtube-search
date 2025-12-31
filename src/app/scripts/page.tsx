@@ -89,6 +89,12 @@ export default function ScriptsPage() {
   const [outlineData, setOutlineData] = useState<ScriptOutlineData | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedScriptId, setSavedScriptId] = useState<number | null>(null);
+  const [showOptions, setShowOptions] = useState(true);
+  const [scriptOptions, setScriptOptions] = useState({
+    targetAudience: '',
+    toneAndManner: '',
+    keywords: '',
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -127,6 +133,32 @@ export default function ScriptsPage() {
         }, 1000);
       } catch (e) {
         console.error('Failed to parse outline data:', e);
+      }
+      return;
+    }
+
+    // 댓글 분석 데이터가 있으면 컨텍스트로 활용
+    const storedAnalysis = sessionStorage.getItem('analysisContext');
+    if (storedAnalysis) {
+      try {
+        const analysis = JSON.parse(storedAnalysis);
+        if (analysis.type === 'comment-analysis') {
+          setTopic(analysis.videoTitle);
+
+          // 분석 컨텍스트 메시지 추가
+          const analysisMessage: Message = {
+            id: Date.now().toString(),
+            role: 'system',
+            content: `📊 **댓글 분석 기반 대본 생성 모드**\n\n**영상**: ${analysis.videoTitle}\n**채널**: ${analysis.channelName}\n\n👍 **시청자들이 좋아한 점**:\n${analysis.positiveSummary}\n${analysis.positiveKeywords?.length > 0 ? `키워드: ${analysis.positiveKeywords.join(', ')}` : ''}\n\n👎 **개선이 필요한 점**:\n${analysis.negativeSummary}\n${analysis.negativeKeywords?.length > 0 ? `키워드: ${analysis.negativeKeywords.join(', ')}` : ''}\n\n💡 **개선 제안**:\n${analysis.improvementSuggestions || '없음'}\n\n위 분석 내용을 바탕으로 대본을 작성해드릴게요. 원하시는 방향이나 추가 요청사항을 말씀해주세요!`,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, analysisMessage]);
+
+          // sessionStorage 정리
+          sessionStorage.removeItem('analysisContext');
+        }
+      } catch (e) {
+        console.error('Failed to parse analysis data:', e);
       }
     }
   }, []);
@@ -282,6 +314,19 @@ export default function ScriptsPage() {
     setMessages((prev) => [...prev, systemMessage]);
 
     try {
+      // 옵션 정보 구성
+      const optionsInfo = [];
+      if (scriptOptions.targetAudience) {
+        optionsInfo.push(`타겟 시청자: ${scriptOptions.targetAudience}`);
+      }
+      if (scriptOptions.toneAndManner) {
+        optionsInfo.push(`분위기/톤: ${scriptOptions.toneAndManner}`);
+      }
+      if (scriptOptions.keywords) {
+        optionsInfo.push(`키워드: ${scriptOptions.keywords}`);
+      }
+      const additionalContext = optionsInfo.length > 0 ? optionsInfo.join(', ') : undefined;
+
       const res = await fetch('/api/scripts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -291,7 +336,9 @@ export default function ScriptsPage() {
             oneLineSummary: topic,
           },
           format,
-          targetAudience: '일반 시청자',
+          targetAudience: scriptOptions.targetAudience || '일반 시청자',
+          toneAndManner: scriptOptions.toneAndManner || undefined,
+          additionalContext,
           characters: characters.map((c) => ({
             name: c.name,
             role: c.role,
@@ -460,6 +507,127 @@ export default function ScriptsPage() {
           Gemini AI (<span className="text-purple-400">gemini-3-pro-preview</span>)와 대화하며 대본을 작성합니다.
         </p>
       </div>
+
+      {/* 옵션 패널 */}
+      <Card className="mb-4">
+        <button
+          onClick={() => setShowOptions(!showOptions)}
+          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-800/50 transition-colors rounded-t-lg"
+        >
+          <div className="flex items-center space-x-2">
+            <span className="text-slate-400">⚙️</span>
+            <span className="text-sm font-medium text-slate-300">대본 생성 옵션</span>
+            {(scriptOptions.targetAudience || scriptOptions.toneAndManner || scriptOptions.keywords) && (
+              <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full text-xs">
+                설정됨
+              </span>
+            )}
+          </div>
+          <svg
+            className={`w-5 h-5 text-slate-400 transition-transform ${showOptions ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showOptions && (
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              {/* 타겟 시청자 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1.5">
+                  🎯 타겟 시청자
+                </label>
+                <input
+                  type="text"
+                  value={scriptOptions.targetAudience}
+                  onChange={(e) => setScriptOptions(prev => ({ ...prev, targetAudience: e.target.value }))}
+                  placeholder="예: 20대 직장인, 학생, 주부"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              {/* 분위기/톤앤매너 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1.5">
+                  🎨 분위기 / 톤앤매너
+                </label>
+                <input
+                  type="text"
+                  value={scriptOptions.toneAndManner}
+                  onChange={(e) => setScriptOptions(prev => ({ ...prev, toneAndManner: e.target.value }))}
+                  placeholder="예: 친근한, 전문적인, 유머러스한"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              {/* 키워드 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1.5">
+                  🏷️ 키워드
+                </label>
+                <input
+                  type="text"
+                  value={scriptOptions.keywords}
+                  onChange={(e) => setScriptOptions(prev => ({ ...prev, keywords: e.target.value }))}
+                  placeholder="예: 꿀팁, 브이로그, 리뷰 (쉼표로 구분)"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+            </div>
+
+            {/* 빠른 선택 버튼 */}
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs text-slate-500">빠른 선택:</span>
+              <button
+                type="button"
+                onClick={() => setScriptOptions(prev => ({ ...prev, toneAndManner: '친근하고 편안한' }))}
+                className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-colors"
+              >
+                친근한
+              </button>
+              <button
+                type="button"
+                onClick={() => setScriptOptions(prev => ({ ...prev, toneAndManner: '전문적이고 신뢰감 있는' }))}
+                className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-colors"
+              >
+                전문적인
+              </button>
+              <button
+                type="button"
+                onClick={() => setScriptOptions(prev => ({ ...prev, toneAndManner: '유머러스하고 재미있는' }))}
+                className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-colors"
+              >
+                유머러스
+              </button>
+              <button
+                type="button"
+                onClick={() => setScriptOptions(prev => ({ ...prev, toneAndManner: '에너지 넘치고 활기찬' }))}
+                className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-colors"
+              >
+                활기찬
+              </button>
+              <button
+                type="button"
+                onClick={() => setScriptOptions(prev => ({ ...prev, toneAndManner: '차분하고 설명적인' }))}
+                className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-colors"
+              >
+                차분한
+              </button>
+              <button
+                type="button"
+                onClick={() => setScriptOptions({ targetAudience: '', toneAndManner: '', keywords: '' })}
+                className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-xs transition-colors"
+              >
+                초기화
+              </button>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
       <div className="flex gap-6 flex-1">
         {/* 채팅 영역 */}
