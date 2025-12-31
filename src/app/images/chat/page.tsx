@@ -297,7 +297,7 @@ export default function ChatImageGenerationPage() {
   };
 
   // 이미지 다운로드
-  const downloadImage = (imageBase64: string, imageId: string) => {
+  const downloadImage = async (imageBase64: string, imageId: string) => {
     // 이미지 인덱스 찾기 (역순이므로 뒤집어서 찾기)
     const reversedImages = [...generatedImages].reverse();
     const index = reversedImages.findIndex(img => img.id === imageId);
@@ -306,6 +306,51 @@ export default function ChatImageGenerationPage() {
     if (!image) return;
 
     const filename = generateFilename(image.prompt, index);
+
+    // 디렉토리가 선택되어 있으면 해당 디렉토리에 저장
+    if (baseDirectoryHandle) {
+      try {
+        const sanitizedProjectName = sanitizeForFilename(projectName, 20);
+        const sanitizedSessionName = sanitizeForFilename(sessionName || '이미지채팅', 30);
+
+        // 프로젝트 폴더 생성 (있으면 가져오기)
+        let targetFolder = baseDirectoryHandle;
+
+        if (sanitizedProjectName) {
+          targetFolder = await baseDirectoryHandle.getDirectoryHandle(sanitizedProjectName, { create: true });
+        }
+
+        // 세션 폴더 생성
+        const sessionFolder = await targetFolder.getDirectoryHandle(sanitizedSessionName, { create: true });
+
+        // 파일 생성
+        const fileHandle = await sessionFolder.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+
+        // Base64를 바이너리로 변환
+        const binaryData = atob(imageBase64);
+        const bytes = new Uint8Array(binaryData.length);
+        for (let i = 0; i < binaryData.length; i++) {
+          bytes[i] = binaryData.charCodeAt(i);
+        }
+
+        await writable.write(bytes);
+        await writable.close();
+
+        const folderPath = sanitizedProjectName
+          ? `${baseDirectoryName}/${sanitizedProjectName}/${sanitizedSessionName}`
+          : `${baseDirectoryName}/${sanitizedSessionName}`;
+
+        // 성공 메시지 표시 (간단하게)
+        console.log(`이미지 저장됨: ${folderPath}/${filename}`);
+        return;
+      } catch (error: any) {
+        console.error('이미지 저장 오류:', error);
+        // 실패하면 기본 다운로드로 fallback
+      }
+    }
+
+    // 디렉토리가 없거나 저장 실패시 기본 다운로드
     const link = document.createElement('a');
     link.href = `data:image/png;base64,${imageBase64}`;
     link.download = filename;
