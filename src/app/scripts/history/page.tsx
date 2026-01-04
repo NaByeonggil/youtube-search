@@ -294,7 +294,18 @@ export default function ScriptsHistoryPage() {
                   <h3 className="text-sm font-medium text-white line-clamp-2 mb-1">
                     {record.scriptPurpose || record.videoTitle || '제목 없음'}
                   </h3>
-                  <p className="text-xs text-slate-400 mb-3">{record.projectName}</p>
+                  <p className="text-xs text-slate-400 mb-1">{record.projectName}</p>
+                  {record.youtubeVideoId && (
+                    <a
+                      href={`https://youtube.com/watch?v=${record.youtubeVideoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1 mb-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span>🔗</span> 원본영상 보기
+                    </a>
+                  )}
 
                   {/* 훅 미리보기 */}
                   {record.hookText && (
@@ -354,6 +365,17 @@ export default function ScriptsHistoryPage() {
                               {record.scriptPurpose || record.videoTitle || '제목 없음'}
                             </p>
                             <p className="text-xs text-slate-400">{record.projectName}</p>
+                            {record.youtubeVideoId && (
+                              <a
+                                href={`https://youtube.com/watch?v=${record.youtubeVideoId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <span>🔗</span> 원본영상
+                              </a>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -459,7 +481,17 @@ export default function ScriptsHistoryPage() {
                   <h3 className="text-lg font-semibold text-white mb-1">
                     {selectedRecord.scriptPurpose || selectedRecord.videoTitle || '제목 없음'}
                   </h3>
-                  <p className="text-slate-400 text-sm mb-2">{selectedRecord.projectName}</p>
+                  <p className="text-slate-400 text-sm mb-1">{selectedRecord.projectName}</p>
+                  {selectedRecord.youtubeVideoId && (
+                    <a
+                      href={`https://youtube.com/watch?v=${selectedRecord.youtubeVideoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors mb-2"
+                    >
+                      <span>▶️</span> YouTube에서 보기
+                    </a>
+                  )}
                   <p className="text-slate-500 text-sm">
                     타겟: {selectedRecord.targetAudience || '일반 시청자'} | {selectedRecord.wordCount}자
                   </p>
