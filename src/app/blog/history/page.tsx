@@ -321,14 +321,38 @@ ${record.conclusion}
               onClick={() => setSelectedRecord(record)}
             >
               <CardContent className="p-4">
+                {/* 썸네일 */}
+                {record.sourceVideoId && (
+                  <div className="mb-3">
+                    <img
+                      src={`https://img.youtube.com/vi/${record.sourceVideoId}/mqdefault.jpg`}
+                      alt={record.sourceVideoTitle || '썸네일'}
+                      className="w-full aspect-video object-cover rounded-lg"
+                    />
+                  </div>
+                )}
+
                 {/* 제목 */}
                 <h3 className="text-sm font-medium text-white line-clamp-2 mb-2">
                   {record.blogTitle}
                 </h3>
 
+                {/* 원본영상 링크 */}
+                {record.sourceVideoId && (
+                  <a
+                    href={`https://youtube.com/watch?v=${record.sourceVideoId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1 mb-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span>🔗</span> {record.sourceVideoTitle || '원본영상'}
+                  </a>
+                )}
+
                 {/* 아이디어 정보 */}
                 {record.ideaTitle && (
-                  <p className="text-xs text-purple-400 mb-2 line-clamp-1">
+                  <p className="text-xs text-slate-400 mb-2 line-clamp-1">
                     💡 {record.ideaTitle}
                   </p>
                 )}
@@ -392,9 +416,31 @@ ${record.conclusion}
                   {records.map((record) => (
                     <tr key={record.id} className="hover:bg-slate-700/30">
                       <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-white line-clamp-1">
-                          {record.blogTitle}
-                        </p>
+                        <div className="flex items-center gap-3">
+                          {record.sourceVideoId && (
+                            <img
+                              src={`https://img.youtube.com/vi/${record.sourceVideoId}/mqdefault.jpg`}
+                              alt={record.sourceVideoTitle || '썸네일'}
+                              className="w-20 h-12 object-cover rounded"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-white line-clamp-1">
+                              {record.blogTitle}
+                            </p>
+                            {record.sourceVideoId && (
+                              <a
+                                href={`https://youtube.com/watch?v=${record.sourceVideoId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <span>🔗</span> 원본영상
+                              </a>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-slate-400 line-clamp-1">
@@ -477,6 +523,30 @@ ${record.conclusion}
             </div>
 
             <div className="p-6 space-y-6">
+              {/* 원본 영상 정보 */}
+              {selectedRecord.sourceVideoId && (
+                <div className="flex items-start gap-4 bg-slate-700/50 rounded-lg p-4">
+                  <img
+                    src={`https://img.youtube.com/vi/${selectedRecord.sourceVideoId}/mqdefault.jpg`}
+                    alt={selectedRecord.sourceVideoTitle || '썸네일'}
+                    className="w-40 h-24 object-cover rounded-lg"
+                  />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-slate-400 mb-1">원본 영상</h4>
+                    <p className="text-white font-medium mb-1">{selectedRecord.sourceVideoTitle || '제목 없음'}</p>
+                    <p className="text-sm text-slate-400 mb-2">{selectedRecord.sourceChannelName}</p>
+                    <a
+                      href={`https://youtube.com/watch?v=${selectedRecord.sourceVideoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      <span>▶️</span> YouTube에서 보기
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {/* 블로그 제목 */}
               <div>
                 <h1 className="text-2xl font-bold text-white mb-2">{selectedRecord.blogTitle}</h1>
