@@ -141,6 +141,16 @@ export default function ProjectDetailPage() {
     );
   }
 
+  // 채팅 이미지 또는 이미지 생성 프로젝트인지 확인
+  const isImageProject = project.keyword.startsWith('chat_image_') || project.keyword.startsWith('image_gen_');
+
+  // 이미지 프로젝트 통계 계산
+  const totalImages = project.imageSessions?.reduce((acc, session) => acc + session.images.length, 0) || 0;
+  const totalSessions = project.imageSessions?.length || 0;
+  const completedImages = project.imageSessions?.reduce(
+    (acc, session) => acc + session.images.filter(img => img.generationStatus === 'completed').length, 0
+  ) || 0;
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -156,11 +166,7 @@ export default function ProjectDetailPage() {
             </span>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            키워드: {project.keyword.startsWith('chat_image_')
-              ? '채팅 이미지'
-              : project.keyword.startsWith('image_gen_')
-              ? '이미지 생성'
-              : project.keyword} • 생성일: {formatDate(project.created_at)}
+            키워드: {project.keyword} • 생성일: {formatDate(project.created_at)}
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -184,104 +190,139 @@ export default function ProjectDetailPage() {
 
       {/* Project Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="text-center py-4">
-            <div className="text-2xl font-bold text-gray-900">{project.videos?.length || 0}</div>
-            <div className="text-sm text-gray-500">분석된 영상</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="text-center py-4">
-            <div className="text-2xl font-bold text-green-600">
-              {project.videos?.filter(v => v.viral_grade === 'S' || v.viral_grade === 'A').length || 0}
-            </div>
-            <div className="text-sm text-gray-500">S/A 등급</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="text-center py-4">
-            <div className="text-2xl font-bold text-blue-600">0</div>
-            <div className="text-sm text-gray-500">생성된 대본</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="text-center py-4">
-            <div className="text-2xl font-bold text-purple-600">0</div>
-            <div className="text-sm text-gray-500">생성된 영상</div>
-          </CardContent>
-        </Card>
+        {isImageProject ? (
+          <>
+            <Card>
+              <CardContent className="text-center py-4">
+                <div className="text-2xl font-bold text-gray-900">{totalSessions}</div>
+                <div className="text-sm text-gray-500">이미지 세션</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center py-4">
+                <div className="text-2xl font-bold text-green-600">{totalImages}</div>
+                <div className="text-sm text-gray-500">총 이미지</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center py-4">
+                <div className="text-2xl font-bold text-blue-600">{completedImages}</div>
+                <div className="text-sm text-gray-500">생성 완료</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center py-4">
+                <div className="text-2xl font-bold text-purple-600">
+                  {totalImages > 0 ? Math.round((completedImages / totalImages) * 100) : 0}%
+                </div>
+                <div className="text-sm text-gray-500">완료율</div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardContent className="text-center py-4">
+                <div className="text-2xl font-bold text-gray-900">{project.videos?.length || 0}</div>
+                <div className="text-sm text-gray-500">분석된 영상</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center py-4">
+                <div className="text-2xl font-bold text-green-600">
+                  {project.videos?.filter(v => v.viral_grade === 'S' || v.viral_grade === 'A').length || 0}
+                </div>
+                <div className="text-sm text-gray-500">S/A 등급</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center py-4">
+                <div className="text-2xl font-bold text-blue-600">0</div>
+                <div className="text-sm text-gray-500">생성된 대본</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center py-4">
+                <div className="text-2xl font-bold text-purple-600">0</div>
+                <div className="text-sm text-gray-500">생성된 영상</div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
-      {/* Analyzed Videos */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>분석된 영상</CardTitle>
-            <Link href={`/search?keyword=${encodeURIComponent(project.keyword)}&format=${project.content_format}`}>
-              <Button variant="outline" size="sm">
-                YouTube 검색
-              </Button>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!project.videos || project.videos.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">아직 분석된 영상이 없습니다.</p>
+      {/* Analyzed Videos - 이미지 프로젝트가 아닌 경우에만 표시 */}
+      {!isImageProject && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>분석된 영상</CardTitle>
               <Link href={`/search?keyword=${encodeURIComponent(project.keyword)}&format=${project.content_format}`}>
-                <Button>YouTube에서 영상 검색하기</Button>
+                <Button variant="outline" size="sm">
+                  YouTube 검색
+                </Button>
               </Link>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-left text-sm text-gray-500 border-b">
-                    <th className="pb-3 font-medium">영상</th>
-                    <th className="pb-3 font-medium text-right">조회수</th>
-                    <th className="pb-3 font-medium text-right">구독자</th>
-                    <th className="pb-3 font-medium text-center">터짐 지수</th>
-                    <th className="pb-3 font-medium">분석일</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {project.videos.map((video) => (
-                    <tr key={video.id} className="hover:bg-gray-50">
-                      <td className="py-4">
-                        <div>
-                          <a
-                            href={`https://youtube.com/watch?v=${video.video_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-medium text-gray-900 hover:text-blue-600"
-                          >
-                            {video.title}
-                          </a>
-                          <p className="text-xs text-gray-500">{video.channel_name}</p>
-                        </div>
-                      </td>
-                      <td className="py-4 text-right text-sm text-gray-600">
-                        {formatNumber(video.view_count)}
-                      </td>
-                      <td className="py-4 text-right text-sm text-gray-600">
-                        {formatNumber(video.subscriber_count)}
-                      </td>
-                      <td className="py-4 text-center">
-                        <Badge variant="grade" grade={video.viral_grade as any}>
-                          {video.viral_grade} ({video.viral_score != null ? Number(video.viral_score).toFixed(2) : '-'})
-                        </Badge>
-                      </td>
-                      <td className="py-4 text-sm text-gray-500">
-                        {formatRelativeTime(video.created_at)}
-                      </td>
+          </CardHeader>
+          <CardContent>
+            {!project.videos || project.videos.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">아직 분석된 영상이 없습니다.</p>
+                <Link href={`/search?keyword=${encodeURIComponent(project.keyword)}&format=${project.content_format}`}>
+                  <Button>YouTube에서 영상 검색하기</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-sm text-gray-500 border-b">
+                      <th className="pb-3 font-medium">영상</th>
+                      <th className="pb-3 font-medium text-right">조회수</th>
+                      <th className="pb-3 font-medium text-right">구독자</th>
+                      <th className="pb-3 font-medium text-center">터짐 지수</th>
+                      <th className="pb-3 font-medium">분석일</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {project.videos.map((video) => (
+                      <tr key={video.id} className="hover:bg-gray-50">
+                        <td className="py-4">
+                          <div>
+                            <a
+                              href={`https://youtube.com/watch?v=${video.video_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                            >
+                              {video.title}
+                            </a>
+                            <p className="text-xs text-gray-500">{video.channel_name}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 text-right text-sm text-gray-600">
+                          {formatNumber(video.view_count)}
+                        </td>
+                        <td className="py-4 text-right text-sm text-gray-600">
+                          {formatNumber(video.subscriber_count)}
+                        </td>
+                        <td className="py-4 text-center">
+                          <Badge variant="grade" grade={video.viral_grade as any}>
+                            {video.viral_grade} ({video.viral_score != null ? Number(video.viral_score).toFixed(2) : '-'})
+                          </Badge>
+                        </td>
+                        <td className="py-4 text-sm text-gray-500">
+                          {formatRelativeTime(video.created_at)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Generated Images - 채팅 이미지 프로젝트용 */}
       {project.imageSessions && project.imageSessions.length > 0 && (

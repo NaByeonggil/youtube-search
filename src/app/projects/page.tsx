@@ -103,11 +103,7 @@ export default function ProjectsPage() {
                       </h3>
                     </Link>
                     <p className="text-sm text-slate-400 mt-1">
-                      키워드: {project.keyword.startsWith('chat_image_')
-                        ? '채팅 이미지'
-                        : project.keyword.startsWith('image_gen_')
-                        ? '이미지 생성'
-                        : project.keyword}
+                      키워드: {project.keyword}
                     </p>
                   </div>
                   <Badge
