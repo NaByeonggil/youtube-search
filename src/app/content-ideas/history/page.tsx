@@ -333,7 +333,7 @@ export default function ContentIdeasHistoryPage() {
                   {/* 썸네일 */}
                   <div className="flex-shrink-0">
                     <img
-                      src={workflow.sourceVideo.thumbnailUrl}
+                      src={workflow.sourceVideo.thumbnailUrl || '/placeholder-video.svg'}
                       alt={workflow.sourceVideo.title}
                       className="w-40 h-24 object-cover rounded-lg"
                     />
@@ -604,7 +604,7 @@ export default function ContentIdeasHistoryPage() {
                 <h3 className="text-sm font-medium text-slate-400 mb-2">원본 영상</h3>
                 <div className="flex items-center gap-4 bg-slate-700/50 rounded-lg p-4">
                   <img
-                    src={selectedWorkflow.sourceVideo.thumbnailUrl}
+                    src={selectedWorkflow.sourceVideo.thumbnailUrl || '/placeholder-video.svg'}
                     alt={selectedWorkflow.sourceVideo.title}
                     className="w-32 h-20 object-cover rounded"
                   />

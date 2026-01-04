@@ -663,7 +663,7 @@ ${blogPost.conclusion}
                     {/* 썸네일 */}
                     <div className="relative aspect-video">
                       <img
-                        src={video.thumbnailUrl}
+                        src={video.thumbnailUrl || '/placeholder-video.svg'}
                         alt={video.title}
                         className="w-full h-full object-cover"
                       />
@@ -749,7 +749,7 @@ ${blogPost.conclusion}
                         <td className="px-4 py-4">
                           <div className="flex items-start space-x-3">
                             <img
-                              src={video.thumbnailUrl}
+                              src={video.thumbnailUrl || '/placeholder-video.svg'}
                               alt={video.title}
                               className="w-32 h-18 object-cover rounded-lg"
                             />

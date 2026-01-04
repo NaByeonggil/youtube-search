@@ -301,7 +301,7 @@ export default function AnalysisHistoryPage() {
                 {/* 썸네일 */}
                 <div className="relative">
                   <img
-                    src={record.thumbnailUrl || '/placeholder-video.png'}
+                    src={record.thumbnailUrl || '/placeholder-video.svg'}
                     alt={record.videoTitle}
                     className="w-full aspect-video object-cover rounded-t-lg"
                   />
@@ -378,7 +378,7 @@ export default function AnalysisHistoryPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-3">
                           <img
-                            src={record.thumbnailUrl || '/placeholder-video.png'}
+                            src={record.thumbnailUrl || '/placeholder-video.svg'}
                             alt={record.videoTitle}
                             className="w-20 h-12 object-cover rounded"
                           />
@@ -463,7 +463,7 @@ export default function AnalysisHistoryPage() {
               {/* 영상 정보 */}
               <div className="flex items-start space-x-4">
                 <img
-                  src={selectedRecord.thumbnailUrl || '/placeholder-video.png'}
+                  src={selectedRecord.thumbnailUrl || '/placeholder-video.svg'}
                   alt={selectedRecord.videoTitle}
                   className="w-48 h-28 object-cover rounded-lg"
                 />

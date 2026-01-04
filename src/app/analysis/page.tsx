@@ -396,7 +396,7 @@ function AnalysisContent() {
           <CardContent>
             <div className="flex flex-col">
               <img
-                src={selectedVideo.thumbnailUrl}
+                src={selectedVideo.thumbnailUrl || '/placeholder-video.svg'}
                 alt={selectedVideo.title}
                 className="w-full aspect-video object-cover rounded-lg mb-4"
               />
