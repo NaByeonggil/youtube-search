@@ -286,9 +286,10 @@ export default function ScriptAnalysisHistoryPage() {
                           href={`https://youtube.com/watch?v=${record.youtubeVideoId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-red-400 hover:underline"
+                          className="text-xs text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          YouTube
+                          <span>🔗</span> 원본영상
                         </a>
                       )}
                       <span className="text-xs text-[#555555]">ID: {record.id}</span>
@@ -385,9 +386,9 @@ export default function ScriptAnalysisHistoryPage() {
                       href={`https://youtube.com/watch?v=${selectedRecord.youtubeVideoId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-red-400 hover:underline"
+                      className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors"
                     >
-                      YouTube에서 보기
+                      <span>▶️</span> YouTube에서 보기
                     </a>
                   )}
                   {selectedRecord.estimatedDuration && (
