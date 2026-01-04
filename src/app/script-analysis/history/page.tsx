@@ -270,8 +270,19 @@ export default function ScriptAnalysisHistoryPage() {
                 key={record.id}
                 className="bg-[#141414] border border-[#2a2a2a] rounded-lg p-4 hover:border-[#444444] transition-colors"
               >
-                <div className="flex items-start justify-between gap-4">
-                  {/* 왼쪽: 정보 */}
+                <div className="flex items-start gap-4">
+                  {/* 썸네일 */}
+                  {record.youtubeVideoId && (
+                    <div className="flex-shrink-0">
+                      <img
+                        src={`https://img.youtube.com/vi/${record.youtubeVideoId}/mqdefault.jpg`}
+                        alt={record.title || '썸네일'}
+                        className="w-32 h-20 object-cover rounded-lg"
+                      />
+                    </div>
+                  )}
+
+                  {/* 정보 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <span
@@ -372,6 +383,28 @@ export default function ScriptAnalysisHistoryPage() {
 
               {/* 모달 내용 */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* 영상 정보 */}
+                {selectedRecord.youtubeVideoId && (
+                  <div className="flex items-start gap-4 bg-[#1a1a1a] rounded-lg p-4">
+                    <img
+                      src={`https://img.youtube.com/vi/${selectedRecord.youtubeVideoId}/mqdefault.jpg`}
+                      alt={selectedRecord.title || '썸네일'}
+                      className="w-40 h-24 object-cover rounded-lg"
+                    />
+                    <div className="flex-1">
+                      <h3 className="text-white font-medium mb-1">{selectedRecord.title || '제목 없음'}</h3>
+                      <a
+                        href={`https://youtube.com/watch?v=${selectedRecord.youtubeVideoId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                      >
+                        <span>▶️</span> YouTube에서 보기
+                      </a>
+                    </div>
+                  </div>
+                )}
+
                 {/* 메타 정보 */}
                 <div className="flex items-center gap-4 text-sm">
                   <span
@@ -381,19 +414,10 @@ export default function ScriptAnalysisHistoryPage() {
                   >
                     {sourceLabels[selectedRecord.scriptSource]?.label || selectedRecord.scriptSource}
                   </span>
-                  {selectedRecord.youtubeVideoId && (
-                    <a
-                      href={`https://youtube.com/watch?v=${selectedRecord.youtubeVideoId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors"
-                    >
-                      <span>▶️</span> YouTube에서 보기
-                    </a>
-                  )}
                   {selectedRecord.estimatedDuration && (
                     <span className="text-[#888888]">예상 길이: {selectedRecord.estimatedDuration}</span>
                   )}
+                  <span className="text-[#888888]">{selectedRecord.analysisModel}</span>
                 </div>
 
                 {/* 1. 대본 구성 */}
