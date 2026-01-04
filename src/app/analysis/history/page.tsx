@@ -301,8 +301,8 @@ export default function AnalysisHistoryPage() {
                 {/* 썸네일 */}
                 <div className="relative">
                   <img
-                    src={record.thumbnailUrl || '/placeholder-video.svg'}
-                    alt={record.videoTitle}
+                    src={record.thumbnailUrl || (record.youtubeVideoId ? `https://img.youtube.com/vi/${record.youtubeVideoId}/mqdefault.jpg` : '/placeholder-video.svg')}
+                    alt={record.videoTitle || '영상 썸네일'}
                     className="w-full aspect-video object-cover rounded-t-lg"
                   />
                   {/* 등급 배지 */}
@@ -389,8 +389,8 @@ export default function AnalysisHistoryPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-3">
                           <img
-                            src={record.thumbnailUrl || '/placeholder-video.svg'}
-                            alt={record.videoTitle}
+                            src={record.thumbnailUrl || (record.youtubeVideoId ? `https://img.youtube.com/vi/${record.youtubeVideoId}/mqdefault.jpg` : '/placeholder-video.svg')}
+                            alt={record.videoTitle || '영상 썸네일'}
                             className="w-20 h-12 object-cover rounded"
                           />
                           <div className="min-w-0">
@@ -485,8 +485,8 @@ export default function AnalysisHistoryPage() {
               {/* 영상 정보 */}
               <div className="flex items-start space-x-4">
                 <img
-                  src={selectedRecord.thumbnailUrl || '/placeholder-video.svg'}
-                  alt={selectedRecord.videoTitle}
+                  src={selectedRecord.thumbnailUrl || (selectedRecord.youtubeVideoId ? `https://img.youtube.com/vi/${selectedRecord.youtubeVideoId}/mqdefault.jpg` : '/placeholder-video.svg')}
+                  alt={selectedRecord.videoTitle || '영상 썸네일'}
                   className="w-48 h-28 object-cover rounded-lg"
                 />
                 <div className="flex-1">

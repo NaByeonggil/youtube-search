@@ -265,29 +265,27 @@ export default function ScriptsHistoryPage() {
             >
               <CardContent className="p-0">
                 {/* 썸네일 */}
-                {record.thumbnailUrl && (
-                  <div className="relative">
-                    <img
-                      src={record.thumbnailUrl}
-                      alt={record.videoTitle}
-                      className="w-full aspect-video object-cover rounded-t-lg"
-                    />
-                    {/* 형식 배지 */}
-                    <div className="absolute top-2 right-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        record.contentFormat === 'short'
-                          ? 'bg-pink-500 text-white'
-                          : 'bg-blue-500 text-white'
-                      }`}>
-                        {record.contentFormat === 'short' ? '숏폼' : '롱폼'}
-                      </span>
-                    </div>
-                    {/* 길이 */}
-                    <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-0.5 rounded">
-                      {formatDuration(record.expectedDurationSeconds)}
-                    </div>
+                <div className="relative">
+                  <img
+                    src={record.thumbnailUrl || (record.youtubeVideoId ? `https://img.youtube.com/vi/${record.youtubeVideoId}/mqdefault.jpg` : '/placeholder-video.svg')}
+                    alt={record.videoTitle || '영상 썸네일'}
+                    className="w-full aspect-video object-cover rounded-t-lg"
+                  />
+                  {/* 형식 배지 */}
+                  <div className="absolute top-2 right-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                      record.contentFormat === 'short'
+                        ? 'bg-pink-500 text-white'
+                        : 'bg-blue-500 text-white'
+                    }`}>
+                      {record.contentFormat === 'short' ? '숏폼' : '롱폼'}
+                    </span>
                   </div>
-                )}
+                  {/* 길이 */}
+                  <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-0.5 rounded">
+                    {formatDuration(record.expectedDurationSeconds)}
+                  </div>
+                </div>
 
                 <div className="p-4">
                   {/* 제목/주제 */}
@@ -353,13 +351,11 @@ export default function ScriptsHistoryPage() {
                     <tr key={record.id} className="hover:bg-slate-700/30">
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-3">
-                          {record.thumbnailUrl && (
-                            <img
-                              src={record.thumbnailUrl}
-                              alt={record.videoTitle}
-                              className="w-20 h-12 object-cover rounded"
-                            />
-                          )}
+                          <img
+                            src={record.thumbnailUrl || (record.youtubeVideoId ? `https://img.youtube.com/vi/${record.youtubeVideoId}/mqdefault.jpg` : '/placeholder-video.svg')}
+                            alt={record.videoTitle || '영상 썸네일'}
+                            className="w-20 h-12 object-cover rounded"
+                          />
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-white line-clamp-1">
                               {record.scriptPurpose || record.videoTitle || '제목 없음'}
@@ -458,13 +454,11 @@ export default function ScriptsHistoryPage() {
             <div className="p-6 space-y-6">
               {/* 영상 정보 */}
               <div className="flex items-start space-x-4">
-                {selectedRecord.thumbnailUrl && (
-                  <img
-                    src={selectedRecord.thumbnailUrl}
-                    alt={selectedRecord.videoTitle}
-                    className="w-48 h-28 object-cover rounded-lg"
-                  />
-                )}
+                <img
+                  src={selectedRecord.thumbnailUrl || (selectedRecord.youtubeVideoId ? `https://img.youtube.com/vi/${selectedRecord.youtubeVideoId}/mqdefault.jpg` : '/placeholder-video.svg')}
+                  alt={selectedRecord.videoTitle || '영상 썸네일'}
+                  className="w-48 h-28 object-cover rounded-lg"
+                />
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${
