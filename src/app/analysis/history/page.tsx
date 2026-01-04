@@ -318,7 +318,18 @@ export default function AnalysisHistoryPage() {
                   <h3 className="text-sm font-medium text-white line-clamp-2 mb-1">
                     {record.videoTitle}
                   </h3>
-                  <p className="text-xs text-slate-400 mb-3">{record.channelName}</p>
+                  <p className="text-xs text-slate-400 mb-1">{record.channelName}</p>
+                  {record.youtubeVideoId && (
+                    <a
+                      href={`https://youtube.com/watch?v=${record.youtubeVideoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1 mb-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span>🔗</span> 원본영상 보기
+                    </a>
+                  )}
 
                   {/* 감성 분포 바 */}
                   <div className="flex h-2 rounded-full overflow-hidden mb-2">
@@ -387,6 +398,17 @@ export default function AnalysisHistoryPage() {
                               {record.videoTitle}
                             </p>
                             <p className="text-xs text-slate-400">{record.channelName}</p>
+                            {record.youtubeVideoId && (
+                              <a
+                                href={`https://youtube.com/watch?v=${record.youtubeVideoId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <span>🔗</span> 원본영상
+                              </a>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -471,7 +493,17 @@ export default function AnalysisHistoryPage() {
                   <h3 className="text-lg font-semibold text-white mb-1">
                     {selectedRecord.videoTitle}
                   </h3>
-                  <p className="text-slate-400 mb-2">{selectedRecord.channelName}</p>
+                  <p className="text-slate-400 mb-1">{selectedRecord.channelName}</p>
+                  {selectedRecord.youtubeVideoId && (
+                    <a
+                      href={`https://youtube.com/watch?v=${selectedRecord.youtubeVideoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors mb-2"
+                    >
+                      <span>▶️</span> YouTube에서 보기
+                    </a>
+                  )}
                   <div className="flex items-center space-x-4 text-sm">
                     <span className="text-slate-300">
                       조회수: {formatNumber(selectedRecord.viewCount)}
