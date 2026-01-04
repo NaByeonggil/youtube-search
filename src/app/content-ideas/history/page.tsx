@@ -346,9 +346,15 @@ export default function ContentIdeasHistoryPage() {
                         <h3 className="text-lg font-semibold text-white line-clamp-1">
                           {workflow.selectedIdea?.title || workflow.sourceVideo.title}
                         </h3>
-                        <p className="text-sm text-slate-400 mt-1">
-                          원본: {workflow.sourceVideo.title}
-                        </p>
+                        <a
+                          href={`https://youtube.com/watch?v=${workflow.sourceVideo.videoId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-slate-400 mt-1 hover:text-purple-400 transition-colors flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span>🔗</span> 원본: {workflow.sourceVideo.title}
+                        </a>
                         <p className="text-xs text-slate-500 mt-1">
                           {workflow.sourceVideo.channelTitle} · {formatDate(workflow.createdAt)}
                         </p>
@@ -608,9 +614,17 @@ export default function ContentIdeasHistoryPage() {
                     alt={selectedWorkflow.sourceVideo.title}
                     className="w-32 h-20 object-cover rounded"
                   />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-white font-medium">{selectedWorkflow.sourceVideo.title}</p>
                     <p className="text-sm text-slate-400">{selectedWorkflow.sourceVideo.channelTitle}</p>
+                    <a
+                      href={`https://youtube.com/watch?v=${selectedWorkflow.sourceVideo.videoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      <span>▶️</span> YouTube에서 보기
+                    </a>
                   </div>
                 </div>
               </div>
