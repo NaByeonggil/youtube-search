@@ -333,8 +333,8 @@ export default function ContentIdeasHistoryPage() {
                   {/* 썸네일 */}
                   <div className="flex-shrink-0">
                     <img
-                      src={workflow.sourceVideo.thumbnailUrl || '/placeholder-video.svg'}
-                      alt={workflow.sourceVideo.title}
+                      src={workflow.sourceVideo.thumbnailUrl || (workflow.sourceVideo.videoId ? `https://img.youtube.com/vi/${workflow.sourceVideo.videoId}/mqdefault.jpg` : '/placeholder-video.svg')}
+                      alt={workflow.sourceVideo.title || '영상 썸네일'}
                       className="w-40 h-24 object-cover rounded-lg"
                     />
                   </div>
@@ -610,8 +610,8 @@ export default function ContentIdeasHistoryPage() {
                 <h3 className="text-sm font-medium text-slate-400 mb-2">원본 영상</h3>
                 <div className="flex items-center gap-4 bg-slate-700/50 rounded-lg p-4">
                   <img
-                    src={selectedWorkflow.sourceVideo.thumbnailUrl || '/placeholder-video.svg'}
-                    alt={selectedWorkflow.sourceVideo.title}
+                    src={selectedWorkflow.sourceVideo.thumbnailUrl || (selectedWorkflow.sourceVideo.videoId ? `https://img.youtube.com/vi/${selectedWorkflow.sourceVideo.videoId}/mqdefault.jpg` : '/placeholder-video.svg')}
+                    alt={selectedWorkflow.sourceVideo.title || '영상 썸네일'}
                     className="w-32 h-20 object-cover rounded"
                   />
                   <div className="flex-1">
