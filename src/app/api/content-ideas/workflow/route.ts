@@ -15,6 +15,7 @@ interface WorkflowRow extends RowDataPacket {
   content_requests: string;
   related_topics: string;
   hot_topics: string;
+  content_ideas_list: string;
   selected_idea_title: string;
   selected_idea_description: string;
   selected_idea_target_audience: string;
@@ -44,17 +45,32 @@ export async function POST(request: NextRequest) {
     const {
       sourceVideo,
       contentIdeas,
+      contentIdeasList,
       selectedIdea,
       outline,
       generatedScript,
+      generatedBlog,
       format,
     } = body;
 
+    // sourceVideo와 contentIdeas가 있으면 저장 가능 (selectedIdea는 선택사항)
     if (!sourceVideo || !sourceVideo.videoId) {
       return NextResponse.json(
         { success: false, error: 'sourceVideo is required' },
         { status: 400 }
       );
+    }
+
+    // 워크플로우 상태 결정
+    let workflowStatus = 'ideas_generated';
+    if (generatedScript) {
+      workflowStatus = 'script_generated';
+    } else if (generatedBlog) {
+      workflowStatus = 'completed';
+    } else if (outline) {
+      workflowStatus = 'outline_created';
+    } else if (selectedIdea) {
+      workflowStatus = 'idea_selected';
     }
 
     const connection = await getPool().getConnection();
@@ -73,6 +89,7 @@ export async function POST(request: NextRequest) {
           content_requests,
           related_topics,
           hot_topics,
+          content_ideas_list,
           selected_idea_title,
           selected_idea_description,
           selected_idea_target_audience,
@@ -88,12 +105,12 @@ export async function POST(request: NextRequest) {
           outline_tags,
           generated_script_full,
           workflow_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          sourceVideo.videoId,
-          sourceVideo.title || '',
-          sourceVideo.channelTitle || '',
-          sourceVideo.thumbnailUrl || '',
+          sourceVideo?.videoId || '',
+          sourceVideo?.title || '',
+          sourceVideo?.channelTitle || '',
+          sourceVideo?.thumbnailUrl || '',
           format || 'long',
           contentIdeas?.totalCommentsAnalyzed || 0,
           JSON.stringify(contentIdeas?.viewerQuestions || []),
@@ -101,6 +118,7 @@ export async function POST(request: NextRequest) {
           JSON.stringify(contentIdeas?.contentRequests || []),
           JSON.stringify(contentIdeas?.relatedTopics || []),
           JSON.stringify(contentIdeas?.hotTopics || []),
+          JSON.stringify(contentIdeasList || contentIdeas?.contentIdeas || []),
           selectedIdea?.title || '',
           selectedIdea?.description || '',
           selectedIdea?.targetAudience || '',
@@ -114,8 +132,8 @@ export async function POST(request: NextRequest) {
           outline?.callToAction || '',
           outline?.thumbnailIdea || '',
           JSON.stringify(outline?.tags || []),
-          generatedScript?.fullScript || null,
-          generatedScript ? 'script_generated' : outline ? 'outline_created' : 'idea_selected',
+          generatedScript?.fullScript || (generatedBlog ? JSON.stringify(generatedBlog) : null),
+          workflowStatus,
         ]
       );
 
@@ -188,6 +206,7 @@ export async function GET(request: NextRequest) {
           relatedTopics: JSON.parse(row.related_topics || '[]'),
           hotTopics: JSON.parse(row.hot_topics || '[]'),
         },
+        contentIdeasList: JSON.parse(row.content_ideas_list || '[]'),
         selectedIdea: row.selected_idea_title ? {
           title: row.selected_idea_title,
           description: row.selected_idea_description,

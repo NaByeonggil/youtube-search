@@ -644,6 +644,9 @@ CREATE TABLE IF NOT EXISTS content_idea_workflows (
     related_topics JSON,
     hot_topics JSON,
 
+    -- 생성된 콘텐츠 아이디어 목록 (전체)
+    content_ideas_list JSON,
+
     -- 선택된 콘텐츠 아이디어
     selected_idea_title VARCHAR(500),
     selected_idea_description TEXT,
@@ -666,7 +669,7 @@ CREATE TABLE IF NOT EXISTS content_idea_workflows (
     generated_script_full TEXT,
 
     -- 상태
-    workflow_status ENUM('idea_selected', 'outline_created', 'script_generated', 'completed') DEFAULT 'idea_selected',
+    workflow_status ENUM('ideas_generated', 'idea_selected', 'outline_created', 'script_generated', 'completed') DEFAULT 'ideas_generated',
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

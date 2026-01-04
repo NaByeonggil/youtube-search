@@ -185,6 +185,35 @@ export default function SearchPage() {
       if (data.success) {
         setContentIdeas(data.data);
         setWorkflowStep('ideas');
+
+        // 분석 완료 시 바로 워크플로우 저장 (콘텐츠 아이디어 리스트에 표시되도록)
+        try {
+          await fetch('/api/content-ideas/workflow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sourceVideo: {
+                videoId: video.videoId,
+                title: video.title,
+                channelTitle: video.channelTitle,
+                thumbnailUrl: video.thumbnailUrl,
+              },
+              contentIdeas: {
+                viewerQuestions: data.data.viewerQuestions,
+                painPoints: data.data.painPoints,
+                contentRequests: data.data.contentRequests,
+                relatedTopics: data.data.relatedTopics,
+                hotTopics: data.data.hotTopics,
+                totalCommentsAnalyzed: data.data.totalCommentsAnalyzed || 0,
+              },
+              contentIdeasList: data.data.contentIdeas,
+              format: format,
+            }),
+          });
+          console.log('콘텐츠 아이디어가 히스토리에 저장되었습니다.');
+        } catch (saveErr) {
+          console.error('워크플로우 저장 실패:', saveErr);
+        }
       } else {
         setWorkflowError(data.error || '콘텐츠 아이디어 분석에 실패했습니다.');
         setWorkflowStep('idle');
@@ -332,6 +361,46 @@ export default function SearchPage() {
       if (data.success) {
         setBlogPost(data.data.blogPost);
         setWorkflowStep('blog');
+
+        // 콘텐츠 아이디어 워크플로우 저장
+        try {
+          const workflowFormat = selectedIdea.suggestedFormat === '숏폼' ? 'short' : 'long';
+          const workflowRes = await fetch('/api/content-ideas/workflow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sourceVideo: selectedVideo ? {
+                videoId: selectedVideo.videoId,
+                title: selectedVideo.title,
+                channelTitle: selectedVideo.channelTitle,
+                thumbnailUrl: selectedVideo.thumbnailUrl,
+              } : null,
+              contentIdeas: contentIdeas ? {
+                viewerQuestions: contentIdeas.viewerQuestions,
+                painPoints: contentIdeas.painPoints,
+                contentRequests: contentIdeas.contentRequests,
+                relatedTopics: contentIdeas.relatedTopics,
+                hotTopics: contentIdeas.hotTopics,
+              } : null,
+              selectedIdea: {
+                title: selectedIdea.title,
+                description: selectedIdea.description,
+                targetAudience: selectedIdea.targetAudience,
+                estimatedViralScore: selectedIdea.estimatedViralScore,
+                suggestedFormat: selectedIdea.suggestedFormat,
+                reasoning: selectedIdea.reasoning,
+              },
+              format: workflowFormat,
+              generatedBlog: data.data.blogPost,
+            }),
+          });
+          const workflowData = await workflowRes.json();
+          if (workflowData.success) {
+            console.log('Workflow saved with ID:', workflowData.data.id);
+          }
+        } catch (workflowErr) {
+          console.error('Failed to save workflow:', workflowErr);
+        }
 
         // 블로그 DB 저장
         try {

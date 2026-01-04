@@ -211,6 +211,55 @@ function AnalysisContent() {
         totalComments: total,
       });
 
+      // 콘텐츠 아이디어 분석 및 히스토리 저장
+      try {
+        setLoadingStep('콘텐츠 아이디어를 분석하는 중...');
+        const videoTitle = selectedVideo?.title || '';
+        const currentFormat = selectedVideo?.format || 'long';
+
+        const contentIdeasRes = await fetch('/api/analyze/content-ideas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoId,
+            videoTitle,
+            format: currentFormat,
+          }),
+        });
+
+        const contentIdeasData = await contentIdeasRes.json();
+
+        if (contentIdeasData.success) {
+          // 콘텐츠 아이디어 히스토리에 저장
+          await fetch('/api/content-ideas/workflow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sourceVideo: {
+                videoId,
+                title: selectedVideo?.title || videoTitle,
+                channelTitle: selectedVideo?.channelTitle || '',
+                thumbnailUrl: selectedVideo?.thumbnailUrl || '',
+              },
+              contentIdeas: {
+                viewerQuestions: contentIdeasData.data.viewerQuestions || [],
+                painPoints: contentIdeasData.data.painPoints || [],
+                contentRequests: contentIdeasData.data.contentRequests || [],
+                relatedTopics: contentIdeasData.data.relatedTopics || [],
+                hotTopics: contentIdeasData.data.hotTopics || [],
+                totalCommentsAnalyzed: total,
+              },
+              contentIdeasList: contentIdeasData.data.contentIdeas || [],
+              format: currentFormat,
+            }),
+          });
+          console.log('분석 결과가 콘텐츠 아이디어 히스토리에 저장되었습니다.');
+        }
+      } catch (contentIdeasErr) {
+        console.error('콘텐츠 아이디어 저장 실패:', contentIdeasErr);
+        // 메인 분석은 성공했으므로 에러를 무시
+      }
+
     } catch (err: any) {
       console.error('Analysis error:', err);
       setError(err.message || '댓글 분석 중 오류가 발생했습니다.');
@@ -942,16 +991,30 @@ function AnalysisContent() {
               <CardTitle>다음 단계</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col space-y-4">
                 <p className="text-slate-300">
-                  분석 결과를 바탕으로 대본을 생성하시겠습니까?
+                  분석 결과를 바탕으로 콘텐츠를 생성하시겠습니까?
                 </p>
-                <Link href="/scripts">
-                  <Button>
-                    <span className="mr-2">📝</span>
-                    대본 생성하기
-                  </Button>
-                </Link>
+                <div className="flex flex-wrap gap-3">
+                  <Link href="/scripts">
+                    <Button className="bg-emerald-600 hover:bg-emerald-700">
+                      <span className="mr-2">📝</span>
+                      대본 생성하기
+                    </Button>
+                  </Link>
+                  <Link href="/blog">
+                    <Button className="bg-blue-600 hover:bg-blue-700">
+                      <span className="mr-2">✏️</span>
+                      블로그 생성하기
+                    </Button>
+                  </Link>
+                  <Link href="/content-ideas/history">
+                    <Button variant="outline">
+                      <span className="mr-2">💡</span>
+                      콘텐츠 아이디어 보기
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </CardContent>
           </Card>

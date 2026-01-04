@@ -5,6 +5,16 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui';
 
+interface ContentIdeaItem {
+  id: number;
+  title: string;
+  description: string;
+  targetAudience: string;
+  estimatedViralScore: '상' | '중' | '하';
+  reasoning: string;
+  suggestedFormat: '숏폼' | '롱폼';
+}
+
 interface Workflow {
   id: number;
   sourceVideo: {
@@ -22,6 +32,7 @@ interface Workflow {
     relatedTopics: string[];
     hotTopics: string[];
   };
+  contentIdeasList: ContentIdeaItem[];
   selectedIdea: {
     title: string;
     description: string;
@@ -54,10 +65,17 @@ interface Workflow {
 }
 
 const statusLabels: Record<string, { label: string; color: string }> = {
+  ideas_generated: { label: '아이디어 분석', color: 'bg-emerald-500' },
   idea_selected: { label: '아이디어 선택', color: 'bg-blue-500' },
   outline_created: { label: '목차 생성', color: 'bg-yellow-500' },
   script_generated: { label: '대본 생성', color: 'bg-green-500' },
   completed: { label: '완료', color: 'bg-purple-500' },
+};
+
+const viralScoreColors: Record<string, string> = {
+  상: 'text-green-400',
+  중: 'text-yellow-400',
+  하: 'text-red-400',
 };
 
 function formatDate(dateString: string): string {
@@ -348,8 +366,13 @@ export default function ContentIdeasHistoryPage() {
                       <span className="text-slate-400">
                         📝 {workflow.format === 'short' ? '숏폼' : '롱폼'}
                       </span>
-                      {workflow.outline && (
+                      {workflow.contentIdeasList && workflow.contentIdeasList.length > 0 && (
                         <span className="text-emerald-400">
+                          💡 아이디어 {workflow.contentIdeasList.length}개
+                        </span>
+                      )}
+                      {workflow.outline && (
+                        <span className="text-yellow-400">
                           ✅ 목차 생성됨
                         </span>
                       )}
@@ -592,11 +615,40 @@ export default function ContentIdeasHistoryPage() {
                 </div>
               </div>
 
+              {/* 분석된 콘텐츠 아이디어 목록 */}
+              {selectedWorkflow.contentIdeasList && selectedWorkflow.contentIdeasList.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-400 mb-2">💡 분석된 콘텐츠 아이디어 ({selectedWorkflow.contentIdeasList.length}개)</h3>
+                  <div className="space-y-3">
+                    {selectedWorkflow.contentIdeasList.map((idea, idx) => (
+                      <div key={idx} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-purple-500/50 transition-colors">
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="text-base font-semibold text-white">{idea.title}</h4>
+                          <div className="flex items-center space-x-2">
+                            <span className={`text-sm font-bold ${viralScoreColors[idea.estimatedViralScore] || 'text-slate-400'}`}>
+                              {idea.estimatedViralScore === '상' ? '🔥 높음' : idea.estimatedViralScore === '중' ? '⚡ 보통' : '💤 낮음'}
+                            </span>
+                            <span className="px-2 py-0.5 bg-slate-600 rounded text-xs text-slate-300">
+                              {idea.suggestedFormat}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-slate-300 text-sm mb-2">{idea.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-slate-400">
+                          <span>🎯 타겟: {idea.targetAudience}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2 italic">💡 {idea.reasoning}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* 선택된 아이디어 */}
               {selectedWorkflow.selectedIdea && (
                 <div>
-                  <h3 className="text-sm font-medium text-slate-400 mb-2">선택된 아이디어</h3>
-                  <div className="bg-slate-700/50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-slate-400 mb-2">✅ 선택된 아이디어</h3>
+                  <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
                     <h4 className="text-lg font-semibold text-white">{selectedWorkflow.selectedIdea.title}</h4>
                     <p className="text-slate-300 mt-2">{selectedWorkflow.selectedIdea.description}</p>
                     <div className="flex items-center gap-4 mt-3 text-sm">
