@@ -4,8 +4,18 @@ import { YouTubeService } from '@/services/youtube';
 import { db } from '@/lib/db';
 import { ContentFormat } from '@/types';
 
-const geminiService = new GeminiService();
-const youtubeService = new YouTubeService();
+let _geminiService: GeminiService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const geminiService = () => {
+  if (!_geminiService) _geminiService = new GeminiService();
+  return _geminiService;
+};
+let _youtubeService: YouTubeService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const youtubeService = () => {
+  if (!_youtubeService) _youtubeService = new YouTubeService();
+  return _youtubeService;
+};
 
 /**
  * POST /api/analyze/comments - 댓글 감성 분석
@@ -21,7 +31,7 @@ export async function POST(request: NextRequest) {
     // 직접 댓글을 전달하지 않은 경우 YouTube에서 수집
     if (!commentsToAnalyze && videoId) {
       console.log(`Fetching comments from YouTube: ${videoId}`);
-      commentsToAnalyze = await youtubeService.getComments(videoId, format as ContentFormat);
+      commentsToAnalyze = await youtubeService().getComments(videoId, format as ContentFormat);
     }
 
     if (!commentsToAnalyze || commentsToAnalyze.length === 0) {
@@ -34,7 +44,7 @@ export async function POST(request: NextRequest) {
     console.log(`Analyzing ${commentsToAnalyze.length} comments with Gemini...`);
 
     // Gemini로 감성 분석
-    const analysisResult = await geminiService.analyzeComments(
+    const analysisResult = await geminiService().analyzeComments(
       commentsToAnalyze,
       format as ContentFormat
     );
@@ -66,7 +76,7 @@ export async function POST(request: NextRequest) {
         negativeKeywords: analysisResult.negativeKeywords,
         improvementSuggestions: analysisResult.improvementSuggestions || '',
         rawCommentsJson: JSON.stringify(commentsToAnalyze),
-        analysisModel: 'gemini-3-pro-preview',
+        analysisModel: 'gemini-3.5-flash',
       });
 
       return NextResponse.json({

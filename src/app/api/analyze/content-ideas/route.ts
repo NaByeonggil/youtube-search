@@ -3,8 +3,18 @@ import { GeminiService } from '@/services/gemini';
 import { YouTubeService } from '@/services/youtube';
 import { ContentFormat } from '@/types';
 
-const geminiService = new GeminiService();
-const youtubeService = new YouTubeService();
+let _geminiService: GeminiService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const geminiService = () => {
+  if (!_geminiService) _geminiService = new GeminiService();
+  return _geminiService;
+};
+let _youtubeService: YouTubeService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const youtubeService = () => {
+  if (!_youtubeService) _youtubeService = new YouTubeService();
+  return _youtubeService;
+};
 
 /**
  * POST /api/analyze/content-ideas - 댓글 기반 콘텐츠 아이디어 분석
@@ -32,7 +42,7 @@ export async function POST(request: NextRequest) {
     // 직접 댓글을 전달하지 않은 경우 YouTube에서 수집
     if (!commentsToAnalyze && videoId) {
       console.log(`Fetching comments for content ideas: ${videoId}`);
-      commentsToAnalyze = await youtubeService.getComments(videoId, format as ContentFormat);
+      commentsToAnalyze = await youtubeService().getComments(videoId, format as ContentFormat);
     }
 
     if (!commentsToAnalyze || commentsToAnalyze.length === 0) {
@@ -45,7 +55,7 @@ export async function POST(request: NextRequest) {
     console.log(`Analyzing ${commentsToAnalyze.length} comments for content ideas...`);
 
     // Gemini로 콘텐츠 아이디어 분석
-    const contentIdeas = await geminiService.analyzeContentIdeas(
+    const contentIdeas = await geminiService().analyzeContentIdeas(
       commentsToAnalyze,
       videoTitle || 'Unknown Video',
       format as ContentFormat

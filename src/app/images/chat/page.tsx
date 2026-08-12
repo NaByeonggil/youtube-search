@@ -538,7 +538,7 @@ export default function ChatImageGenerationPage() {
                 채팅으로 이미지 생성
               </h1>
               <span className="text-sm text-slate-400 bg-slate-700 px-2 py-1 rounded">
-                Gemini 2.0 Flash
+                Gemini 3.5 Flash
               </span>
             </div>
             <div className="flex items-center gap-2">

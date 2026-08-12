@@ -3,8 +3,18 @@ import { ImageGenerationService } from '@/services/imageGen';
 import { GeminiService } from '@/services/gemini';
 import { ContentFormat } from '@/types';
 
-const imageService = new ImageGenerationService();
-const geminiService = new GeminiService();
+let _imageService: ImageGenerationService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const imageService = () => {
+  if (!_imageService) _imageService = new ImageGenerationService();
+  return _imageService;
+};
+let _geminiService: GeminiService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const geminiService = () => {
+  if (!_geminiService) _geminiService = new GeminiService();
+  return _geminiService;
+};
 
 /**
  * POST /api/images/character - 캐릭터 이미지 생성 (채팅 기반)
@@ -68,7 +78,7 @@ export async function POST(request: NextRequest) {
       ...messages,
     ];
 
-    const aiResponse = await geminiService.generateChatResponse(
+    const aiResponse = await geminiService().generateChatResponse(
       chatMessages,
       format as ContentFormat
     );
@@ -94,7 +104,7 @@ export async function POST(request: NextRequest) {
     let generatedImage = null;
     if (generateImage && parsedResponse.character && parsedResponse.readyForImage) {
       try {
-        const imageResult = await imageService.generateCharacterImage(
+        const imageResult = await imageService().generateCharacterImage(
           {
             name: parsedResponse.character.name || '캐릭터',
             type: parsedResponse.character.type || '캐릭터',
@@ -106,7 +116,7 @@ export async function POST(request: NextRequest) {
 
         // 이미지 저장 (projectId, videoId가 있는 경우)
         if (projectId && videoId && imageResult.base64) {
-          const saved = await imageService.saveBase64Image(
+          const saved = await imageService().saveBase64Image(
             imageResult.base64,
             imageResult.mimeType,
             projectId,
@@ -141,7 +151,7 @@ export async function POST(request: NextRequest) {
         readyForImage: parsedResponse.readyForImage,
         image: generatedImage,
         model: {
-          chat: 'gemini-3-pro-preview',
+          chat: 'gemini-3.5-flash',
           image: 'gemini-3-pro-preview',
         },
       },

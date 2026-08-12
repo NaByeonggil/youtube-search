@@ -601,7 +601,7 @@ export default function VideosPage() {
             <h3 className="font-bold text-slate-200 mb-2">사용 모델</h3>
             <div className="text-sm text-slate-400 space-y-1">
               <p>
-                <span className="text-slate-300">채팅:</span> gemini-3-pro-preview
+                <span className="text-slate-300">채팅:</span> gemini-3.5-flash
               </p>
               <p>
                 <span className="text-slate-300">영상:</span> veo-3.1-generate-preview

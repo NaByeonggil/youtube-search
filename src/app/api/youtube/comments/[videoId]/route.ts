@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { YouTubeService } from '@/services/youtube';
 import { ContentFormat } from '@/types';
 
-const youtubeService = new YouTubeService();
+let _youtubeService: YouTubeService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const youtubeService = () => {
+  if (!_youtubeService) _youtubeService = new YouTubeService();
+  return _youtubeService;
+};
 
 /**
  * GET /api/youtube/comments/[videoId] - 영상 댓글 수집
@@ -19,7 +24,7 @@ export async function GET(
 
     console.log(`Fetching comments for video: ${videoId} (format: ${format})`);
 
-    const comments = await youtubeService.getComments(videoId, format);
+    const comments = await youtubeService().getComments(videoId, format);
 
     return NextResponse.json({
       success: true,

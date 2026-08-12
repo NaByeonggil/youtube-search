@@ -506,7 +506,7 @@ export const db = {
           JSON.stringify(data.planningNotes || null),
           data.totalCharacters || 0,
           data.estimatedDuration || null,
-          data.analysisModel || 'gemini-3-pro'
+          data.analysisModel || 'gemini-3.5-flash'
         ]
       );
       return result.insertId;

@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { YouTubeService, calculateViralScore } from '@/services/youtube';
 import { ContentFormat } from '@/types';
 
-const youtubeService = new YouTubeService();
+let _youtubeService: YouTubeService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const youtubeService = () => {
+  if (!_youtubeService) _youtubeService = new YouTubeService();
+  return _youtubeService;
+};
 
 /**
  * GET /api/youtube/videos/[videoId] - 영상 상세 정보 조회
@@ -17,7 +22,7 @@ export async function GET(
     const format = (searchParams.get('format') || 'long') as ContentFormat;
 
     // 영상 상세 정보
-    const [videoDetails] = await youtubeService.getVideoDetails([videoId]);
+    const [videoDetails] = await youtubeService().getVideoDetails([videoId]);
 
     if (!videoDetails) {
       return NextResponse.json(
@@ -27,7 +32,7 @@ export async function GET(
     }
 
     // 채널 정보
-    const [channelDetails] = await youtubeService.getChannelDetails([videoDetails.channelId]);
+    const [channelDetails] = await youtubeService().getChannelDetails([videoDetails.channelId]);
     const subscriberCount = channelDetails?.subscriberCount || 0;
 
     // 터짐 지수

@@ -39,6 +39,26 @@ interface AnalysisContext {
   improvementSuggestions: string;
 }
 
+// 콘텐츠 아이디어 히스토리 상세보기에서 [이어서 작업하기]로 넘어온 컨텍스트
+interface ContentIdeaContext {
+  type: string;
+  idea: {
+    title: string;
+    description: string;
+    targetAudience: string;
+    estimatedViralScore: '상' | '중' | '하';
+    reasoning: string;
+    suggestedFormat: '숏폼' | '롱폼';
+  };
+  sourceVideo: {
+    videoId: string;
+    title: string;
+    channelName: string;
+    thumbnailUrl?: string;
+  };
+  format: 'short' | 'long';
+}
+
 export default function BlogPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -54,6 +74,7 @@ export default function BlogPage() {
   const [generatedBlog, setGeneratedBlog] = useState<GeneratedBlog | null>(null);
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [analysisContext, setAnalysisContext] = useState<AnalysisContext | null>(null);
+  const [ideaContext, setIdeaContext] = useState<ContentIdeaContext | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedBlogId, setSavedBlogId] = useState<number | null>(null);
   const [showOptions, setShowOptions] = useState(true);
@@ -100,6 +121,38 @@ export default function BlogPage() {
     }
   }, []);
 
+  // 콘텐츠 아이디어 히스토리에서 넘어온 아이디어를 블로그 생성에 적용
+  useEffect(() => {
+    const storedIdea = sessionStorage.getItem('contentIdeaContext');
+    if (!storedIdea) return;
+
+    try {
+      const ctx: ContentIdeaContext = JSON.parse(storedIdea);
+      if (ctx.type !== 'content-idea' || !ctx.idea) return;
+
+      setIdeaContext(ctx);
+      setTopic(ctx.idea.title);
+      setBlogOptions(prev => ({
+        ...prev,
+        targetAudience: ctx.idea.targetAudience || prev.targetAudience,
+      }));
+      // 바로 전송할 수 있도록 입력창을 채워둔다
+      setInput(`"${ctx.idea.title}" 주제로 블로그 글을 작성해줘.`);
+
+      const ideaMessage: Message = {
+        id: Date.now().toString(),
+        role: 'system',
+        content: `💡 **콘텐츠 아이디어 기반 블로그 생성 모드**\n\n**아이디어**: ${ctx.idea.title}\n**설명**: ${ctx.idea.description}\n**타겟 독자**: ${ctx.idea.targetAudience}\n**예상 화제성**: ${ctx.idea.estimatedViralScore}\n**추천 포맷**: ${ctx.idea.suggestedFormat}\n${ctx.idea.reasoning ? `**선정 이유**: ${ctx.idea.reasoning}\n` : ''}${ctx.sourceVideo?.title ? `\n**원본 영상**: ${ctx.sourceVideo.title} (${ctx.sourceVideo.channelName})` : ''}\n\n위 아이디어가 적용되었습니다. 그대로 생성하려면 전송 버튼을 누르고, 방향을 바꾸고 싶으면 요청사항을 입력해주세요!`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, ideaMessage]);
+
+      sessionStorage.removeItem('contentIdeaContext');
+    } catch (e) {
+      console.error('Failed to parse content idea data:', e);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
@@ -142,11 +195,30 @@ export default function BlogPage() {
       }
       const optionsContext = optionsInfo.length > 0 ? `\n[블로그 옵션]\n${optionsInfo.join('\n')}` : '';
 
+      // 콘텐츠 아이디어로 진입한 경우 해당 아이디어를 컨텍스트로 활용
+      const ideaInfo = ideaContext ? `
+[콘텐츠 아이디어 컨텍스트]
+아이디어: ${ideaContext.idea.title}
+설명: ${ideaContext.idea.description}
+타겟 독자: ${ideaContext.idea.targetAudience}
+예상 화제성: ${ideaContext.idea.estimatedViralScore}
+추천 포맷: ${ideaContext.idea.suggestedFormat}
+선정 이유: ${ideaContext.idea.reasoning}
+${ideaContext.sourceVideo?.title ? `원본 영상: ${ideaContext.sourceVideo.title} (${ideaContext.sourceVideo.channelName})` : ''}
+` : '';
+
       const res = await fetch('/api/blog/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contentIdea: {
+          contentIdea: ideaContext ? {
+            title: ideaContext.idea.title,
+            description: ideaContext.idea.description,
+            targetAudience: blogOptions.targetAudience || ideaContext.idea.targetAudience,
+            estimatedViralScore: ideaContext.idea.estimatedViralScore,
+            reasoning: ideaContext.idea.reasoning,
+            suggestedFormat: ideaContext.idea.suggestedFormat,
+          } : {
             title: topic || input,
             description: input,
             targetAudience: blogOptions.targetAudience || '일반 독자',
@@ -156,7 +228,7 @@ export default function BlogPage() {
           },
           customTarget: blogOptions.targetAudience || undefined,
           toneAndManner: blogOptions.toneAndManner || undefined,
-          additionalContext: contextInfo + optionsContext + `\n사용자 요청: ${input}`,
+          additionalContext: contextInfo + ideaInfo + optionsContext + `\n사용자 요청: ${input}`,
         }),
       });
 
@@ -220,11 +292,15 @@ export default function BlogPage() {
             videoId: analysisContext.videoId,
             title: analysisContext.videoTitle,
             channelName: analysisContext.channelName,
+          } : ideaContext?.sourceVideo ? {
+            videoId: ideaContext.sourceVideo.videoId,
+            title: ideaContext.sourceVideo.title,
+            channelName: ideaContext.sourceVideo.channelName,
           } : undefined,
           idea: {
             title: topic,
-            description: '',
-            targetAudience: blogOptions.targetAudience || '일반 독자',
+            description: ideaContext?.idea.description || '',
+            targetAudience: blogOptions.targetAudience || ideaContext?.idea.targetAudience || '일반 독자',
           },
           options: {
             customTarget: blogOptions.targetAudience || undefined,

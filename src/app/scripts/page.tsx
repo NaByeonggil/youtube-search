@@ -504,7 +504,7 @@ export default function ScriptsPage() {
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-white">대본 생성</h1>
         <p className="text-slate-400 mt-1">
-          Gemini AI (<span className="text-purple-400">gemini-3-pro-preview</span>)와 대화하며 대본을 작성합니다.
+          Gemini AI (<span className="text-purple-400">gemini-3.5-flash</span>)와 대화하며 대본을 작성합니다.
         </p>
       </div>
 

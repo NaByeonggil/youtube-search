@@ -138,7 +138,7 @@ export default function ApiKeySettings() {
             <ul className="text-blue-200/80 space-y-1">
               <li>• 개인 API 키를 설정하면 시스템 API 할당량과 별도로 사용됩니다.</li>
               <li>• YouTube Data API: <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Google Cloud Console</a>에서 발급</li>
-              <li>• Gemini API: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Google AI Studio</a>에서 발급 (gemini-2.0-flash-exp 사용)</li>
+              <li>• Gemini API: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Google AI Studio</a>에서 발급 (gemini-3.5-flash 사용)</li>
               <li>• API 키는 암호화되어 안전하게 저장됩니다.</li>
             </ul>
           </div>
@@ -225,7 +225,7 @@ export default function ApiKeySettings() {
             {/* Gemini API Key */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">
-                Gemini API 키 (gemini-2.0-flash-exp / gemini-exp-1206)
+                Gemini API 키 (gemini-3.5-flash)
               </label>
               <div className="relative">
                 <input

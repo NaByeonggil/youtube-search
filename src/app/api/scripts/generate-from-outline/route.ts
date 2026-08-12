@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GeminiService } from '@/services/gemini';
 import { ContentFormat, ScriptOutlineResult, ContentIdeaItem } from '@/types';
 
-const geminiService = new GeminiService();
+let _geminiService: GeminiService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const geminiService = () => {
+  if (!_geminiService) _geminiService = new GeminiService();
+  return _geminiService;
+};
 
 /**
  * POST /api/scripts/generate-from-outline - 목차 기반 대본 생성
@@ -100,8 +105,8 @@ ${outline.callToAction}
   ]
 }`;
 
-  const genAI = geminiService['genAI'];
-  const model = genAI.getGenerativeModel({ model: 'models/gemini-3-pro-preview' });
+  const genAI = geminiService()['genAI'];
+  const model = genAI.getGenerativeModel({ model: 'models/gemini-3.5-flash' });
 
   const result = await model.generateContent(prompt);
   const response = await result.response;

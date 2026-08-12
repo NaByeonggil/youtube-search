@@ -19,7 +19,7 @@ interface TTSConfig {
 export default function SettingsPage() {
   const [textModel, setTextModel] = useState<AIModelConfig>({
     provider: 'gemini',
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-3.5-flash',
     apiKey: '',
     enabled: true,
   });
@@ -129,9 +129,10 @@ export default function SettingsPage() {
               >
                 {textModel.provider === 'gemini' && (
                   <>
-                    <option value="gemini-3-pro-preview">Gemini 3 Pro (추천)</option>
-                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    <option value="gemini-3.5-flash">Gemini 3.5 Flash (무료, 추천)</option>
+                    <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (무료)</option>
+                    <option value="gemini-flash-latest">Gemini Flash Latest (무료)</option>
+                    <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (유료 전용)</option>
                   </>
                 )}
                 {textModel.provider === 'claude' && (
