@@ -106,7 +106,7 @@ ${outline.callToAction}
 }`;
 
   const genAI = geminiService()['genAI'];
-  const model = genAI.getGenerativeModel({ model: 'models/gemini-3.6-flash' });
+  const model = genAI.getGenerativeModel({ model: 'models/gemini-3.5-flash' });
 
   const result = await model.generateContent(prompt);
   const response = await result.response;

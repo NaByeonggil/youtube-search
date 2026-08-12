@@ -63,7 +63,7 @@ export class VideoGenerationService {
 
     // 채팅용 모델 (이미지 분석, 프롬프트 생성)
     this.chatModel = this.genAI.getGenerativeModel({
-      model: 'gemini-3.6-flash'
+      model: 'gemini-3.5-flash'
     });
 
     // 영상 생성용 Veo 모델

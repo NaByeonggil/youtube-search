@@ -70,8 +70,8 @@ async function transcribeWithGemini(audioPath: string, language: string = 'ko'):
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-  // Gemini 2.0 Flash 모델 사용 (오디오 지원, 빠른 처리)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  // Gemini 3.5 Flash 모델 사용 (오디오 지원, 빠른 처리)
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
   // 오디오 파일 읽기
   const audioBuffer = await fs.readFile(audioPath);

@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
         readyForImage: parsedResponse.readyForImage,
         image: generatedImage,
         model: {
-          chat: 'gemini-3.6-flash',
+          chat: 'gemini-3.5-flash',
           image: 'gemini-3-pro-preview',
         },
       },

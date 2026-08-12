@@ -100,6 +100,8 @@ export default function ContentIdeasHistoryPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [generatingBlog, setGeneratingBlog] = useState<number | null>(null);
+  // 상세보기에서 선택한 콘텐츠 아이디어 (이어서 작업하기 시 블로그 생성 화면으로 전달)
+  const [selectedIdeaIdx, setSelectedIdeaIdx] = useState<number | null>(null);
 
   // 블로그 생성 옵션 모달 상태
   const [showBlogModal, setShowBlogModal] = useState(false);
@@ -212,15 +214,21 @@ export default function ContentIdeasHistoryPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            sourceVideoId: workflow.sourceVideo.videoId,
-            sourceVideoTitle: workflow.sourceVideo.title,
-            sourceChannelName: workflow.sourceVideo.channelTitle,
-            ideaTitle: selectedIdea.title,
-            ideaDescription: selectedIdea.description,
-            ideaTargetAudience: selectedIdea.targetAudience,
+            sourceVideo: {
+              videoId: workflow.sourceVideo.videoId,
+              title: workflow.sourceVideo.title,
+              channelName: workflow.sourceVideo.channelTitle,
+            },
+            idea: {
+              title: selectedIdea.title,
+              description: selectedIdea.description,
+              targetAudience: selectedIdea.targetAudience,
+            },
             blogPost: data.data.blogPost,
-            customTarget: blogOptions.customTarget || undefined,
-            toneAndManner: blogOptions.toneAndManner || undefined,
+            options: {
+              customTarget: blogOptions.customTarget || undefined,
+              toneAndManner: blogOptions.toneAndManner || undefined,
+            },
           }),
         });
 
@@ -244,7 +252,31 @@ export default function ContentIdeasHistoryPage() {
     }
   };
 
-  const handleContinue = (workflow: Workflow) => {
+  const handleContinue = (workflow: Workflow, idea?: ContentIdeaItem) => {
+    // 상세보기에서 아이디어 카드를 고른 경우 블로그 생성 화면으로 이동
+    if (idea) {
+      sessionStorage.setItem('contentIdeaContext', JSON.stringify({
+        type: 'content-idea',
+        idea: {
+          title: idea.title,
+          description: idea.description,
+          targetAudience: idea.targetAudience,
+          estimatedViralScore: idea.estimatedViralScore,
+          reasoning: idea.reasoning,
+          suggestedFormat: idea.suggestedFormat,
+        },
+        sourceVideo: {
+          videoId: workflow.sourceVideo.videoId,
+          title: workflow.sourceVideo.title,
+          channelName: workflow.sourceVideo.channelTitle,
+          thumbnailUrl: workflow.sourceVideo.thumbnailUrl,
+        },
+        format: workflow.format,
+      }));
+      router.push('/blog');
+      return;
+    }
+
     // 워크플로우 데이터를 sessionStorage에 저장하고 적절한 페이지로 이동
     if (workflow.generatedScript) {
       // 이미 대본이 있으면 대본 페이지로
@@ -271,6 +303,7 @@ export default function ContentIdeasHistoryPage() {
 
   const viewDetail = (workflow: Workflow) => {
     setSelectedWorkflow(workflow);
+    setSelectedIdeaIdx(null);
     setShowDetailModal(true);
   };
 
@@ -632,12 +665,35 @@ export default function ContentIdeasHistoryPage() {
               {/* 분석된 콘텐츠 아이디어 목록 */}
               {selectedWorkflow.contentIdeasList && selectedWorkflow.contentIdeasList.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-slate-400 mb-2">💡 분석된 콘텐츠 아이디어 ({selectedWorkflow.contentIdeasList.length}개)</h3>
+                  <h3 className="text-sm font-medium text-slate-400 mb-2">
+                    💡 분석된 콘텐츠 아이디어 ({selectedWorkflow.contentIdeasList.length}개)
+                    <span className="ml-2 text-xs text-slate-500 font-normal">— 카드를 선택하면 [이어서 작업하기] 시 블로그 생성 화면으로 이어집니다</span>
+                  </h3>
                   <div className="space-y-3">
                     {selectedWorkflow.contentIdeasList.map((idea, idx) => (
-                      <div key={idx} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-purple-500/50 transition-colors">
+                      <div
+                        key={idx}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={selectedIdeaIdx === idx}
+                        onClick={() => setSelectedIdeaIdx(selectedIdeaIdx === idx ? null : idx)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedIdeaIdx(selectedIdeaIdx === idx ? null : idx);
+                          }
+                        }}
+                        className={`rounded-lg p-4 border cursor-pointer transition-colors ${
+                          selectedIdeaIdx === idx
+                            ? 'bg-purple-500/10 border-purple-500 ring-1 ring-purple-500'
+                            : 'bg-slate-700/50 border-slate-600 hover:border-purple-500/50'
+                        }`}
+                      >
                         <div className="flex items-start justify-between mb-2">
-                          <h4 className="text-base font-semibold text-white">{idea.title}</h4>
+                          <h4 className="text-base font-semibold text-white">
+                            {selectedIdeaIdx === idx && <span className="text-purple-400 mr-1">✓</span>}
+                            {idea.title}
+                          </h4>
                           <div className="flex items-center space-x-2">
                             <span className={`text-sm font-bold ${viralScoreColors[idea.estimatedViralScore] || 'text-slate-400'}`}>
                               {idea.estimatedViralScore === '상' ? '🔥 높음' : idea.estimatedViralScore === '중' ? '⚡ 보통' : '💤 낮음'}
@@ -735,10 +791,14 @@ export default function ContentIdeasHistoryPage() {
                 </Button>
               )}
               <Button onClick={() => {
+                const pickedIdea =
+                  selectedIdeaIdx !== null
+                    ? selectedWorkflow.contentIdeasList?.[selectedIdeaIdx]
+                    : undefined;
                 setShowDetailModal(false);
-                handleContinue(selectedWorkflow);
+                handleContinue(selectedWorkflow, pickedIdea);
               }}>
-                이어서 작업하기
+                {selectedIdeaIdx !== null ? '이어서 작업하기 (블로그 생성)' : '이어서 작업하기'}
               </Button>
             </div>
           </div>

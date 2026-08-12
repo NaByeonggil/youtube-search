@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
         suggestedDuration: chatResponse.suggestedDuration,
         video: generatedVideo,
         model: {
-          chat: 'gemini-3.6-flash',
+          chat: 'gemini-3.5-flash',
           video: 'veo-3.1-generate-preview',
         },
       },

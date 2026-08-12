@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Gemini Vision 모델 사용 (이미지 분석 가능)
-    const visionModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     // 시스템 프롬프트
     const systemPrompt = `당신은 전문 이미지 생성 어시스턴트입니다.
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
         readyToGenerate: parsedResponse.readyToGenerate,
         image: generatedImage,
         model: {
-          chat: 'gemini-2.0-flash',
+          chat: 'gemini-3.5-flash',
           image: 'gemini-3-pro-preview',
         },
       },

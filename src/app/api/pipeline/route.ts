@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       negativeKeywords: commentAnalysis.negativeKeywords,
       improvementSuggestions: commentAnalysis.improvementSuggestions || '',
       rawCommentsJson: JSON.stringify(comments),
-      analysisModel: 'gemini-3.6-flash',
+      analysisModel: 'gemini-3.5-flash',
     });
 
     results.stages.commentAnalysis = {

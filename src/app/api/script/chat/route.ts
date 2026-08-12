@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-3.5-flash' });
 
     // 대화 히스토리 포맷
     const historyText = conversationHistory

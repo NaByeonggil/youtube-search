@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       planningNotes: analysis.planningNotes,
       totalCharacters: analysis.characterCount?.total || originalScript.length,
       estimatedDuration: analysis.characterCount?.estimatedDuration || undefined,
-      analysisModel: 'gemini-3.6-flash',
+      analysisModel: 'gemini-3.5-flash',
     });
 
     return NextResponse.json({
