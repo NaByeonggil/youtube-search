@@ -225,7 +225,7 @@ export default function ApiKeySettings() {
             {/* Gemini API Key */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">
-                Gemini API 키 (gemini-2.0-flash-exp / gemini-exp-1206)
+                Gemini API 키 (gemini-3.6-flash)
               </label>
               <div className="relative">
                 <input

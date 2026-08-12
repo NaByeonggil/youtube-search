@@ -3,7 +3,12 @@ import { GeminiService } from '@/services/gemini';
 import { db } from '@/lib/db';
 import { ContentFormat } from '@/types';
 
-const geminiService = new GeminiService();
+let _geminiService: GeminiService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const geminiService = () => {
+  if (!_geminiService) _geminiService = new GeminiService();
+  return _geminiService;
+};
 
 /**
  * POST /api/scripts/generate - 대본 생성
@@ -31,7 +36,7 @@ export async function POST(request: NextRequest) {
     console.log(`Generating script with Gemini (format: ${format})...`);
 
     // Gemini로 대본 생성
-    const scriptResult = await geminiService.generateScript(
+    const scriptResult = await geminiService().generateScript(
       summary.oneLineSummary || summary.topic || JSON.stringify(summary),
       format as ContentFormat,
       [],
@@ -107,7 +112,7 @@ export async function PUT(request: NextRequest) {
 
     console.log(`Generating image prompts with Gemini (format: ${format})...`);
 
-    const prompts = await geminiService.generateImagePrompts(
+    const prompts = await geminiService().generateImagePrompts(
       script,
       format as ContentFormat,
       count

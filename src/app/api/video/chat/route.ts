@@ -6,7 +6,12 @@ import {
 } from '@/services/videoGen';
 import { ContentFormat } from '@/types';
 
-const videoService = new VideoGenerationService();
+let _videoService: VideoGenerationService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const videoService = () => {
+  if (!_videoService) _videoService = new VideoGenerationService();
+  return _videoService;
+};
 
 /**
  * POST /api/video/chat - 영상 생성 채팅 (이미지 첨부 지원)
@@ -42,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 채팅 응답 생성
-    const chatResponse = await videoService.generateChatResponse(
+    const chatResponse = await videoService().generateChatResponse(
       messages as ChatMessage[],
       attachedImages
     );
@@ -64,13 +69,13 @@ export async function POST(request: NextRequest) {
         // 첨부 이미지가 있으면 Image-to-Video, 없으면 Text-to-Video
         let videoResult;
         if (attachedImages && attachedImages.length > 0) {
-          videoResult = await videoService.generateVideoFromImage(
+          videoResult = await videoService().generateVideoFromImage(
             attachedImages[0],
             chatResponse.videoPrompt,
             videoOptions
           );
         } else {
-          videoResult = await videoService.generateVideo(
+          videoResult = await videoService().generateVideo(
             chatResponse.videoPrompt,
             videoOptions
           );
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
         if (videoResult.success) {
           // 영상 저장 (projectId, videoId가 있고 영상 데이터가 있는 경우)
           if (projectId && videoId && videoResult.videoData) {
-            const saved = await videoService.saveVideo(
+            const saved = await videoService().saveVideo(
               videoResult.videoData,
               videoResult.mimeType || 'video/mp4',
               projectId,
@@ -125,7 +130,7 @@ export async function POST(request: NextRequest) {
         suggestedDuration: chatResponse.suggestedDuration,
         video: generatedVideo,
         model: {
-          chat: 'gemini-3-pro-preview',
+          chat: 'gemini-3.6-flash',
           video: 'veo-3.1-generate-preview',
         },
       },
@@ -155,7 +160,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const status = await videoService.checkVideoStatus(operationName);
+    const status = await videoService().checkVideoStatus(operationName);
 
     return NextResponse.json({
       success: status.success,

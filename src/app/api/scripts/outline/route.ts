@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GeminiService } from '@/services/gemini';
 import { ContentFormat, ContentIdeaItem } from '@/types';
 
-const geminiService = new GeminiService();
+let _geminiService: GeminiService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const geminiService = () => {
+  if (!_geminiService) _geminiService = new GeminiService();
+  return _geminiService;
+};
 
 /**
  * POST /api/scripts/outline - 대본 목차(아웃라인) 생성
@@ -29,7 +34,7 @@ export async function POST(request: NextRequest) {
     console.log(`Generating script outline for: ${contentIdea.title}`);
 
     // Gemini로 대본 목차 생성
-    const outline = await geminiService.generateScriptOutline(
+    const outline = await geminiService().generateScriptOutline(
       contentIdea as ContentIdeaItem,
       format as ContentFormat,
       {

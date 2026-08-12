@@ -7,7 +7,12 @@ import path from 'path';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const imageService = new ImageGenerationService();
+let _imageService: ImageGenerationService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const imageService = () => {
+  if (!_imageService) _imageService = new ImageGenerationService();
+  return _imageService;
+};
 
 /**
  * POST /api/images/chat - 이미지 생성 채팅 (이미지 첨부 지원)
@@ -115,7 +120,7 @@ export async function POST(request: NextRequest) {
     let generatedImage = null;
     if (generateImage && parsedResponse.imagePrompt && parsedResponse.readyToGenerate) {
       try {
-        const imageResult = await imageService.generateImage(
+        const imageResult = await imageService().generateImage(
           parsedResponse.imagePrompt,
           format as ContentFormat,
           {
@@ -127,7 +132,7 @@ export async function POST(request: NextRequest) {
         // 이미지 저장 (projectId, videoId가 있는 경우)
         if (projectId && videoId && imageResult.base64) {
           const timestamp = Date.now();
-          const saved = await imageService.saveBase64Image(
+          const saved = await imageService().saveBase64Image(
             imageResult.base64,
             imageResult.mimeType,
             projectId,

@@ -465,7 +465,7 @@ function AnalysisContent() {
         <div className="flex flex-col items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mb-4"></div>
           <p className="text-slate-400">{loadingStep || '분석 중...'}</p>
-          <p className="text-xs text-slate-500 mt-2">Gemini AI (gemini-3-pro-preview) 사용 중</p>
+          <p className="text-xs text-slate-500 mt-2">Gemini AI (gemini-3.6-flash) 사용 중</p>
         </div>
       )}
 
@@ -475,7 +475,7 @@ function AnalysisContent() {
           {/* AI 모델 정보 */}
           <div className="flex items-center justify-between bg-purple-500/10 border border-purple-500/30 rounded-lg px-4 py-2">
             <span className="text-purple-400 text-sm">
-              🤖 Gemini AI (gemini-3-pro-preview)로 분석됨
+              🤖 Gemini AI (gemini-3.6-flash)로 분석됨
             </span>
             <span className="text-slate-400 text-sm">
               총 {analysis.totalComments}개 댓글 분석 완료
@@ -1039,7 +1039,7 @@ function AnalysisContent() {
               </ul>
             </div>
             <div className="mt-4 text-xs text-purple-400">
-              🤖 Gemini AI (gemini-3-pro-preview) 사용
+              🤖 Gemini AI (gemini-3.6-flash) 사용
             </div>
           </CardContent>
         </Card>

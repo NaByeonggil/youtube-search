@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { YouTubeService, calculateViralScore } from '@/services/youtube';
 import { ContentFormat } from '@/types';
 
-const youtubeService = new YouTubeService();
+let _youtubeService: YouTubeService | null = null;
+// 지연 생성: 초기화 실패를 모듈 로드가 아닌 핸들러 try/catch 에서 JSON 으로 응답하기 위함
+const youtubeService = () => {
+  if (!_youtubeService) _youtubeService = new YouTubeService();
+  return _youtubeService;
+};
 
 /**
  * GET /api/youtube/search - YouTube 키워드 검색 및 터짐 지수 계산
@@ -24,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     // 1. 영상 검색
     console.log(`Searching YouTube for: ${keyword} (format: ${format})`);
-    const searchResults = await youtubeService.searchVideos(keyword, format, maxResults);
+    const searchResults = await youtubeService().searchVideos(keyword, format, maxResults);
 
     if (searchResults.length === 0) {
       return NextResponse.json({
@@ -36,11 +41,11 @@ export async function GET(request: NextRequest) {
 
     // 2. 영상 상세 정보 조회
     const videoIds = searchResults.map(v => v.videoId);
-    const videoDetails = await youtubeService.getVideoDetails(videoIds);
+    const videoDetails = await youtubeService().getVideoDetails(videoIds);
 
     // 3. 채널 정보 조회 (구독자수)
     const channelIds = [...new Set(videoDetails.map(v => v.channelId))];
-    const channelDetails = await youtubeService.getChannelDetails(channelIds);
+    const channelDetails = await youtubeService().getChannelDetails(channelIds);
     const channelMap = new Map(channelDetails.map(c => [c.channelId, c]));
 
     // 4. 터짐 지수 계산 및 결과 병합

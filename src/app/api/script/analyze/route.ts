@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-3-pro-preview' });
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-3.6-flash' });
 
     const prompt = `당신은 YouTube/영상 콘텐츠 대본 분석 전문가입니다.
 아래 대본을 분석하여 다음 항목들을 상세히 분석해주세요.
