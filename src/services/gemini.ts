@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 import {
   ContentFormat,
   ClaudeAnalysisResponse,
@@ -17,7 +18,6 @@ import {
  */
 export class GeminiService {
   private genAI: GoogleGenerativeAI;
-  private model: any;
 
   constructor(apiKey?: string) {
     const finalApiKey = apiKey || process.env.GEMINI_API_KEY;
@@ -25,16 +25,15 @@ export class GeminiService {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(finalApiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
   }
 
   /**
    * Gemini API 호출
+   * 일시적 오류(503/429/500)는 지수 백오프로 재시도 후 다음 모델로 폴백
    */
   private async callAPI(prompt: string): Promise<string> {
-    const result = await this.model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const result = await generateWithRetry(this.genAI, prompt);
+    return result.response.text();
   }
 
   /**

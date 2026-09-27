@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 import fs from 'fs/promises';
 import path from 'path';
 import { ContentFormat, getContentConfig } from '@/types';
@@ -11,7 +12,6 @@ import { ContentFormat, getContentConfig } from '@/types';
  */
 export class ImageGenerationService {
   private genAI: GoogleGenerativeAI;
-  private model: any;
   private storagePath: string;
 
   constructor(apiKey?: string, storagePath?: string) {
@@ -20,7 +20,6 @@ export class ImageGenerationService {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(finalApiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'models/gemini-3-pro-preview' });
     this.storagePath = storagePath || process.env.STORAGE_PATH || './storage';
   }
 
@@ -53,12 +52,13 @@ Image specifications:
 - High detail and clarity`;
 
     try {
-      const result = await this.model.generateContent({
+      const result = await generateWithRetry(this.genAI, {
         contents: [{ role: 'user', parts: [{ text: `Generate an image: ${enhancedPrompt}` }] }],
         generationConfig: {
+          // @ts-ignore - Gemini API supports this
           responseModalities: ['image', 'text'],
         },
-      });
+      }, { models: ['models/gemini-3-pro-preview'] });
 
       const response = await result.response;
       const parts = response.candidates?.[0]?.content?.parts || [];

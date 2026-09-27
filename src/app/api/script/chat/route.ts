@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -23,7 +24,6 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-3.5-flash' });
 
     // 대화 히스토리 포맷
     const historyText = conversationHistory
@@ -72,7 +72,7 @@ ${userMessage}
 답변은 마크다운 형식 없이 일반 텍스트로 작성해주세요.
 한국어로 답변해주세요.`;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(genAI, prompt);
     const response = await result.response;
     const text = response.text();
 

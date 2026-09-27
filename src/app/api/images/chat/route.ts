@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 import { ImageGenerationService } from '@/services/imageGen';
 import { ContentFormat } from '@/types';
 import fs from 'fs/promises';
@@ -45,9 +46,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Gemini Vision 모델 사용 (이미지 분석 가능)
-    const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     // 시스템 프롬프트
     const systemPrompt = `당신은 전문 이미지 생성 어시스턴트입니다.
@@ -95,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Gemini Vision으로 응답 생성
-    const result = await visionModel.generateContent({
+    const result = await generateWithRetry(genAI, {
       contents: [{ role: 'user', parts }],
     });
 

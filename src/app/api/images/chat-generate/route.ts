@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -33,13 +34,6 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3-pro-image-preview',
-      generationConfig: {
-        // @ts-ignore - Gemini API supports this
-        responseModalities: ['image', 'text'],
-      },
-    });
 
     // 스타일 프리픽스 적용
     const stylePrefix = style?.prefix || 'Photorealistic, ultra-detailed, professional photography style, ';
@@ -58,12 +52,16 @@ IMPORTANT RULES:
 
     console.log('Generating image with prompt:', finalPrompt.slice(0, 100) + '...');
 
-    const result = await model.generateContent({
+    const result = await generateWithRetry(genAI, {
       contents: [{
         role: 'user',
         parts: [{ text: `Generate an image with aspect ratio ${aspectRatio}: ${finalPrompt}` }]
       }],
-    });
+      generationConfig: {
+        // @ts-ignore - Gemini API supports this
+        responseModalities: ['image', 'text'],
+      },
+    }, { models: ['gemini-3-pro-image-preview'] });
 
     const response = await result.response;
     const parts = response.candidates?.[0]?.content?.parts || [];

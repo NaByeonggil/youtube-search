@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -23,7 +24,6 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-3.5-flash' });
 
     const prompt = `당신은 YouTube/영상 콘텐츠 대본 분석 전문가입니다.
 아래 대본을 분석하여 다음 항목들을 상세히 분석해주세요.
@@ -141,7 +141,7 @@ ${script}
   }
 }`;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(genAI, prompt);
     const response = await result.response;
     const text = response.text();
 

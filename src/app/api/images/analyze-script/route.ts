@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -31,7 +32,6 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const prompt = `
 You are a professional script analyzer for image generation.
@@ -99,7 +99,7 @@ OUTPUT FORMAT (JSON only, no markdown):
 }
 `;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(genAI, prompt);
     const response = await result.response;
     let text = response.text();
 

@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 
 const execAsync = promisify(exec);
 
@@ -70,9 +71,6 @@ async function transcribeWithGemini(audioPath: string, language: string = 'ko'):
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-  // Gemini 3.5 Flash 모델 사용 (오디오 지원, 빠른 처리)
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-
   // 오디오 파일 읽기
   const audioBuffer = await fs.readFile(audioPath);
   const base64Audio = audioBuffer.toString('base64');
@@ -93,7 +91,7 @@ async function transcribeWithGemini(audioPath: string, language: string = 'ko'):
 음악이나 효과음은 무시하고 말하는 내용만 적어주세요.`;
 
   try {
-    const result = await model.generateContent([
+    const result = await generateWithRetry(genAI, [
       {
         inlineData: {
           mimeType,

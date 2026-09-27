@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 import fs from 'fs/promises';
 import path from 'path';
 import { ContentFormat } from '@/types';
@@ -50,7 +51,6 @@ export interface VideoChatResponse {
  */
 export class VideoGenerationService {
   private genAI: GoogleGenerativeAI;
-  private chatModel: any;
   private veoModel: any;
   private storagePath: string;
 
@@ -60,11 +60,6 @@ export class VideoGenerationService {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(finalApiKey);
-
-    // 채팅용 모델 (이미지 분석, 프롬프트 생성)
-    this.chatModel = this.genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash'
-    });
 
     // 영상 생성용 Veo 모델
     this.veoModel = this.genAI.getGenerativeModel({
@@ -144,7 +139,7 @@ Veo 3.1 모델 특성:
       parts.unshift({ text: '이전 대화:\n' + historyContext + '\n\n' });
     }
 
-    const result = await this.chatModel.generateContent({
+    const result = await generateWithRetry(this.genAI, {
       contents: [{ role: 'user', parts }],
     });
 

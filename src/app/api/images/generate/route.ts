@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateWithRetry } from '@/lib/gemini';
 import { ImageGenerationService } from '@/services/imageGen';
 import { db } from '@/lib/db';
 import { ContentFormat } from '@/types';
@@ -123,13 +124,6 @@ async function handleSceneGeneration(body: {
   }
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-3.5-flash',
-    generationConfig: {
-      // @ts-ignore - Gemini API supports this
-      responseModalities: ['image', 'text'],
-    },
-  });
 
   const prompt = buildScenePrompt(scene, characters || {}, style || {
     name: '실사',
@@ -138,12 +132,16 @@ async function handleSceneGeneration(body: {
   });
 
   try {
-    const result = await model.generateContent({
+    const result = await generateWithRetry(genAI, {
       contents: [{
         role: 'user',
         parts: [{ text: `Generate an image with aspect ratio ${aspectRatio || '16:9'}: ${prompt}` }]
       }],
-    });
+      generationConfig: {
+        // @ts-ignore - Gemini API supports this
+        responseModalities: ['image', 'text'],
+      },
+    }, { models: ['gemini-3.5-flash'] });
 
     const response = await result.response;
     const parts = response.candidates?.[0]?.content?.parts || [];
