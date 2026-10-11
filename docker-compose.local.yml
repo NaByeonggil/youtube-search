@@ -1,0 +1,67 @@
+# 로컬 서버 실행용(프로덕션 빌드): docker compose -f docker-compose.local.yml up -d
+name: youtube-local
+
+services:
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: youtube_automation
+      MYSQL_USER: youtube_app
+      MYSQL_PASSWORD: youtube_password
+    ports:
+      - "127.0.0.1:3308:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      default:
+        aliases:
+          - youtube-db
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 서비스명을 app 으로 두면 obesity Caddy 의 app:3000 과 DNS 가 충돌하므로 youtube-app 사용
+  youtube-app:
+    image: node:20
+    restart: unless-stopped
+    user: "1000:1000"
+    working_dir: /app
+    environment:
+      HOME: /tmp
+      DB_HOST: youtube-db
+      DB_PORT: "3306"
+      DB_USER: youtube_app
+      DB_PASSWORD: youtube_password
+      DB_NAME: youtube_automation
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - .:/app
+    # 프로덕션 모드(youtube.obesity.ai.kr 서빙). 소스 수정 후에는 재시작해야 반영됨:
+    #   docker compose -f docker-compose.local.yml restart youtube-app
+    # 개발 모드로 돌리려면 "npm ci && npm run dev" 로 바꾼다.
+    # (NODE_ENV=production 을 environment 에 넣으면 npm ci 가 devDependencies 를 빼서 빌드가 깨짐)
+    command: sh -c "npm ci && npm run build && npm run start"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - default
+      # obesity Caddy(80/443)가 youtube.obesity.ai.kr -> youtube-app:3001 로 프록시
+      - proxy
+
+volumes:
+  db_data:
+
+networks:
+  proxy:
+    name: obesity_obesity1_network
+    external: true
