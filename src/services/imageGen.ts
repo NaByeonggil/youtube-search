@@ -7,7 +7,7 @@ import { ContentFormat, getContentConfig } from '@/types';
  * Image Generation Service
  * PRD 6단계: 이미지 생성 (실사 스타일)
  *
- * Gemini Image Model: models/gemini-3-pro-preview
+ * Gemini Image Model: models/gemini-3.8-flash
  */
 export class ImageGenerationService {
   private genAI: GoogleGenerativeAI;
@@ -20,7 +20,7 @@ export class ImageGenerationService {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(finalApiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'models/gemini-3-pro-preview' });
+    this.model = this.genAI.getGenerativeModel({ model: 'models/gemini-3.8-flash' });
     this.storagePath = storagePath || process.env.STORAGE_PATH || './storage';
   }
 

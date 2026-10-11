@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       data: {
         format,
         thumbnailText,
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-3.8-flash',
         base64: result.base64,
         mimeType: result.mimeType,
         revisedPrompt: result.revisedPrompt,

@@ -84,7 +84,7 @@ STRICT RULES:
 
 /**
  * POST /api/images/generate - 이미지 생성
- * PRD 스펙: gemini-2.5-flash-image 모델 사용 (현재 gemini-2.0-flash-exp 사용)
+ * PRD 스펙: gemini-2.5-flash-image 모델 사용 (현재 gemini-2.5-flash-image 사용)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -124,7 +124,7 @@ async function handleSceneGeneration(body: {
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-2.5-flash-image',
     generationConfig: {
       // @ts-ignore - Gemini API supports this
       responseModalities: ['image', 'text'],
@@ -256,7 +256,7 @@ async function handleLegacyGeneration(body: {
     success: true,
     data: {
       format,
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.5-flash-image',
       totalRequested: prompts.length,
       successCount: successfulImages.length,
       failedCount: failedImages.length,

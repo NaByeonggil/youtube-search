@@ -141,8 +141,8 @@ export async function POST(request: NextRequest) {
         readyForImage: parsedResponse.readyForImage,
         image: generatedImage,
         model: {
-          chat: 'gemini-3-pro-preview',
-          image: 'gemini-3-pro-preview',
+          chat: 'gemini-3.8-flash',
+          image: 'gemini-3.8-flash',
         },
       },
     });

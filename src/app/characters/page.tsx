@@ -391,10 +391,10 @@ export default function CharactersPage() {
               <h3 className="font-bold text-gray-700 mb-2">🤖 사용 모델</h3>
               <div className="text-sm text-gray-600 space-y-1">
                 <p>
-                  <span className="font-medium">채팅:</span> gemini-3-pro-preview
+                  <span className="font-medium">채팅:</span> gemini-3.8-flash
                 </p>
                 <p>
-                  <span className="font-medium">이미지:</span> gemini-3-pro-preview
+                  <span className="font-medium">이미지:</span> gemini-3.8-flash
                 </p>
               </div>
             </div>
