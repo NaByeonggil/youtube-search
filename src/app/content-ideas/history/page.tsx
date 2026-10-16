@@ -98,6 +98,8 @@ export default function ContentIdeasHistoryPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  // 상세 모달에서 클릭으로 선택한 아이디어 (contentIdeasList 인덱스)
+  const [pickedIdeaIndex, setPickedIdeaIndex] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [generatingBlog, setGeneratingBlog] = useState<number | null>(null);
 
@@ -244,7 +246,26 @@ export default function ContentIdeasHistoryPage() {
     }
   };
 
-  const handleContinue = (workflow: Workflow) => {
+  // 콘텐츠 아이디어 워크플로우를 검색 페이지 모달에서 이어서 진행
+  const resumeInSearch = (workflow: Workflow, idea: Workflow['selectedIdea'] | ContentIdeaItem | null) => {
+    sessionStorage.setItem('resumeContentIdeaWorkflow', JSON.stringify({
+      workflowId: workflow.id,
+      sourceVideo: workflow.sourceVideo,
+      format: workflow.format,
+      contentIdeas: workflow.contentIdeas,
+      contentIdeasList: workflow.contentIdeasList || [],
+      selectedIdea: idea,
+    }));
+    router.push('/search');
+  };
+
+  const handleContinue = (workflow: Workflow, pickedIdea: ContentIdeaItem | null = null) => {
+    // 다른 아이디어를 새로 선택한 경우: 선택한 아이디어로 대본 옵션 단계부터 진행
+    if (pickedIdea && pickedIdea.title !== workflow.selectedIdea?.title) {
+      resumeInSearch(workflow, pickedIdea);
+      return;
+    }
+
     // 워크플로우 데이터를 sessionStorage에 저장하고 적절한 페이지로 이동
     if (workflow.generatedScript) {
       // 이미 대본이 있으면 대본 페이지로
@@ -264,13 +285,17 @@ export default function ContentIdeasHistoryPage() {
       }));
       router.push('/scripts');
     } else {
-      // 아이디어만 있으면 검색 페이지로 (다시 시작)
-      router.push('/search');
+      // 아이디어만 있으면 검색 페이지 워크플로우 모달을 복원
+      resumeInSearch(workflow, pickedIdea || workflow.selectedIdea);
     }
   };
 
   const viewDetail = (workflow: Workflow) => {
     setSelectedWorkflow(workflow);
+    const selectedIdx = (workflow.contentIdeasList || []).findIndex(
+      (idea) => idea.title === workflow.selectedIdea?.title
+    );
+    setPickedIdeaIndex(selectedIdx >= 0 ? selectedIdx : null);
     setShowDetailModal(true);
   };
 
@@ -632,10 +657,26 @@ export default function ContentIdeasHistoryPage() {
               {/* 분석된 콘텐츠 아이디어 목록 */}
               {selectedWorkflow.contentIdeasList && selectedWorkflow.contentIdeasList.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-slate-400 mb-2">💡 분석된 콘텐츠 아이디어 ({selectedWorkflow.contentIdeasList.length}개)</h3>
+                  <h3 className="text-sm font-medium text-slate-400 mb-2">💡 분석된 콘텐츠 아이디어 ({selectedWorkflow.contentIdeasList.length}개) · 클릭해서 선택 후 이어서 작업하세요</h3>
                   <div className="space-y-3">
                     {selectedWorkflow.contentIdeasList.map((idea, idx) => (
-                      <div key={idx} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-purple-500/50 transition-colors">
+                      <div
+                        key={idx}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setPickedIdeaIndex(pickedIdeaIndex === idx ? null : idx)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setPickedIdeaIndex(pickedIdeaIndex === idx ? null : idx);
+                          }
+                        }}
+                        className={`rounded-lg p-4 border cursor-pointer transition-colors ${
+                          pickedIdeaIndex === idx
+                            ? 'bg-purple-500/10 border-purple-500 ring-1 ring-purple-500'
+                            : 'bg-slate-700/50 border-slate-600 hover:border-purple-500/50'
+                        }`}
+                      >
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="text-base font-semibold text-white">{idea.title}</h4>
                           <div className="flex items-center space-x-2">
@@ -735,10 +776,16 @@ export default function ContentIdeasHistoryPage() {
                 </Button>
               )}
               <Button onClick={() => {
+                const pickedIdea = pickedIdeaIndex !== null
+                  ? selectedWorkflow.contentIdeasList?.[pickedIdeaIndex] ?? null
+                  : null;
                 setShowDetailModal(false);
-                handleContinue(selectedWorkflow);
+                handleContinue(selectedWorkflow, pickedIdea);
               }}>
-                이어서 작업하기
+                {pickedIdeaIndex !== null &&
+                selectedWorkflow.contentIdeasList?.[pickedIdeaIndex]?.title !== selectedWorkflow.selectedIdea?.title
+                  ? '선택한 아이디어로 이어서 작업하기'
+                  : '이어서 작업하기'}
               </Button>
             </div>
           </div>

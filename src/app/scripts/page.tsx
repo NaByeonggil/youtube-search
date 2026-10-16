@@ -137,6 +137,43 @@ export default function ScriptsPage() {
       return;
     }
 
+    // 콘텐츠 아이디어 히스토리에서 이미 생성된 대본을 불러온 경우
+    const storedScript = sessionStorage.getItem('loadedScript');
+    if (storedScript) {
+      try {
+        const data = JSON.parse(storedScript);
+        sessionStorage.removeItem('loadedScript');
+        if (data.outline && data.contentIdea) {
+          setOutlineData({
+            outline: data.outline,
+            contentIdea: data.contentIdea,
+            format: data.contentIdea.suggestedFormat === '숏폼' ? 'short' : 'long',
+          });
+          setFormat(data.contentIdea.suggestedFormat === '숏폼' ? 'short' : 'long');
+        }
+        if (data.contentIdea?.title) {
+          setTopic(data.contentIdea.title);
+        }
+        setGeneratedScript({
+          fullScript: data.fullScript || '',
+          hook: '',
+          intro: '',
+          body: '',
+          conclusion: '',
+          estimatedDuration: 0,
+        });
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `📂 **저장된 대본 불러오기**\n\n${data.contentIdea?.title ? `**아이디어**: ${data.contentIdea.title}\n\n` : ''}${data.fullScript || ''}`,
+          timestamp: new Date(),
+        }]);
+      } catch (e) {
+        console.error('Failed to parse loaded script:', e);
+      }
+      return;
+    }
+
     // 댓글 분석 데이터가 있으면 컨텍스트로 활용
     const storedAnalysis = sessionStorage.getItem('analysisContext');
     if (storedAnalysis) {

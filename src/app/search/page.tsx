@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface VideoResult {
@@ -136,6 +136,57 @@ export default function SearchPage() {
     message: string;
     blogId?: number;
   } | null>(null);
+
+  // 콘텐츠 아이디어 히스토리에서 "이어서 작업하기"로 넘어온 경우 워크플로우 모달 복원
+  useEffect(() => {
+    const stored = sessionStorage.getItem('resumeContentIdeaWorkflow');
+    if (!stored) return;
+    sessionStorage.removeItem('resumeContentIdeaWorkflow');
+
+    try {
+      const data = JSON.parse(stored);
+      const source = data.sourceVideo || {};
+      const ideasList: ContentIdeaItem[] = data.contentIdeasList || [];
+
+      setFormat(data.format === 'short' ? 'short' : 'long');
+      setSelectedVideo({
+        videoId: source.videoId || '',
+        title: source.title || '',
+        channelTitle: source.channelTitle || '',
+        publishedAt: '',
+        thumbnailUrl: source.thumbnailUrl || '',
+        viewCount: 0,
+        likeCount: 0,
+        commentCount: 0,
+        subscriberCount: 0,
+        durationFormatted: '',
+        viralScore: 0,
+        viralGrade: 'C',
+      });
+      setContentIdeas({
+        viewerQuestions: data.contentIdeas?.viewerQuestions || [],
+        painPoints: data.contentIdeas?.painPoints || [],
+        contentRequests: data.contentIdeas?.contentRequests || [],
+        relatedTopics: data.contentIdeas?.relatedTopics || [],
+        hotTopics: data.contentIdeas?.hotTopics || [],
+        contentIdeas: ideasList,
+      });
+      setScriptOutline(null);
+      setBlogPost(null);
+      setWorkflowError('');
+      setShowIdeaModal(true);
+
+      const idea = data.selectedIdea;
+      if (idea && idea.title) {
+        const matched = ideasList.find((i) => i.title === idea.title);
+        handleShowScriptOptions(matched || { id: 0, ...idea });
+      } else {
+        setWorkflowStep('ideas');
+      }
+    } catch (e) {
+      console.error('Failed to restore content idea workflow:', e);
+    }
+  }, []);
 
   const handleAnalyze = async (video: VideoResult) => {
     setAnalyzing(video.videoId);
@@ -289,6 +340,7 @@ export default function SearchPage() {
             relatedTopics: contentIdeas.relatedTopics,
             hotTopics: contentIdeas.hotTopics,
           } : null,
+          contentIdeasList: contentIdeas?.contentIdeas || [],
           selectedIdea: {
             title: selectedIdea.title,
             description: selectedIdea.description,
