@@ -17,6 +17,7 @@ interface NavItem {
   icon: string;
   step?: number;
   subItems?: SubItem[];
+  comingSoon?: boolean;
 }
 
 interface SidebarProps {
@@ -71,9 +72,9 @@ const navItems: NavItem[] = [
       { name: '생성 기록', href: '/images/history', icon: '📂' },
     ]
   },
-  { name: '음성 합성', href: '/tts', icon: '🎙️', step: 8 },
+  { name: '음성 합성', href: '/tts', icon: '🎙️', step: 8, comingSoon: true },
   { name: 'AI 영상 생성', href: '/videos', icon: '🎬', step: 9 },
-  { name: '업로드', href: '/upload', icon: '📤', step: 10 },
+  { name: '업로드', href: '/upload', icon: '📤', step: 10, comingSoon: true },
 ];
 
 const bottomItems: NavItem[] = [
@@ -292,6 +293,18 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
+                  ) : item.comingSoon ? (
+                    <div
+                      aria-disabled="true"
+                      title="준비 중인 기능입니다"
+                      className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-500 cursor-not-allowed"
+                    >
+                      <span className="mr-3 text-lg opacity-50">{item.icon}</span>
+                      <span className="flex-1">{item.name}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-400">
+                        준비 중
+                      </span>
+                    </div>
                   ) : (
                     <Link
                       href={item.href}
