@@ -38,6 +38,7 @@ interface GeneratedScript {
 }
 
 interface ScriptOutlineData {
+  workflowId?: number;
   outline: {
     title: string;
     hook: string;
@@ -236,6 +237,15 @@ export default function ScriptsPage() {
           timestamp: new Date(),
         };
         setMessages(prev => [...prev, scriptMessage]);
+
+        // 콘텐츠 아이디어 워크플로우에 생성된 대본 반영
+        if (data.workflowId && result.data.fullScript) {
+          fetch(`/api/content-ideas/workflow/${data.workflowId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ generatedScript: { fullScript: result.data.fullScript } }),
+          }).catch((err) => console.error('Failed to update workflow script:', err));
+        }
       } else {
         throw new Error(result.error || '대본 생성에 실패했습니다.');
       }

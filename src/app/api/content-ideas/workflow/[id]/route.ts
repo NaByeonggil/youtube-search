@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
-import { RowDataPacket } from 'mysql2';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 interface WorkflowRow extends RowDataPacket {
   id: number;
@@ -111,6 +111,135 @@ export async function GET(
     }
   } catch (error: any) {
     console.error('Error fetching workflow:', error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+const STATUS_ORDER = ['ideas_generated', 'idea_selected', 'outline_created', 'script_generated', 'completed'];
+
+/**
+ * PATCH /api/content-ideas/workflow/[id] - 워크플로우 진행 단계 갱신
+ * (아이디어 선택, 목차, 대본, 블로그 중 전달된 항목만 업데이트)
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const { contentIdeasList, selectedIdea, outline, generatedScript, generatedBlog } = body;
+
+    const connection = await getPool().getConnection();
+
+    try {
+      const [rows] = await connection.execute<WorkflowRow[]>(
+        'SELECT workflow_status, generated_script_full FROM content_idea_workflows WHERE id = ?',
+        [id]
+      );
+
+      if (rows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: '워크플로우를 찾을 수 없습니다.' },
+          { status: 404 }
+        );
+      }
+
+      const sets: string[] = [];
+      const values: (string | number | null)[] = [];
+      let newStatus = 'ideas_generated';
+
+      if (Array.isArray(contentIdeasList) && contentIdeasList.length > 0) {
+        sets.push('content_ideas_list = ?');
+        values.push(JSON.stringify(contentIdeasList));
+      }
+
+      if (selectedIdea) {
+        sets.push(
+          'selected_idea_title = ?',
+          'selected_idea_description = ?',
+          'selected_idea_target_audience = ?',
+          'selected_idea_viral_score = ?',
+          'selected_idea_format = ?',
+          'selected_idea_reasoning = ?'
+        );
+        values.push(
+          selectedIdea.title || '',
+          selectedIdea.description || '',
+          selectedIdea.targetAudience || '',
+          selectedIdea.estimatedViralScore || '',
+          selectedIdea.suggestedFormat || '',
+          selectedIdea.reasoning || ''
+        );
+        newStatus = 'idea_selected';
+      }
+
+      if (outline) {
+        sets.push(
+          'outline_title = ?',
+          'outline_hook = ?',
+          'outline_duration = ?',
+          'outline_sections = ?',
+          'outline_cta = ?',
+          'outline_thumbnail_idea = ?',
+          'outline_tags = ?'
+        );
+        values.push(
+          outline.title || '',
+          outline.hook || '',
+          outline.estimatedDuration || '',
+          JSON.stringify(outline.sections || []),
+          outline.callToAction || '',
+          outline.thumbnailIdea || '',
+          JSON.stringify(outline.tags || [])
+        );
+        newStatus = 'outline_created';
+      }
+
+      if (generatedScript?.fullScript) {
+        sets.push('generated_script_full = ?');
+        values.push(generatedScript.fullScript);
+        newStatus = 'script_generated';
+      }
+
+      if (generatedBlog) {
+        // 기존 대본이 있으면 덮어쓰지 않음 (POST 와 동일하게 대본 컬럼에 블로그 JSON 보관)
+        if (!rows[0].generated_script_full) {
+          sets.push('generated_script_full = ?');
+          values.push(JSON.stringify(generatedBlog));
+        }
+        newStatus = 'completed';
+      }
+
+      // 상태는 뒤로 되돌리지 않음
+      const currentStatus = rows[0].workflow_status;
+      if (STATUS_ORDER.indexOf(newStatus) > STATUS_ORDER.indexOf(currentStatus)) {
+        sets.push('workflow_status = ?');
+        values.push(newStatus);
+      }
+
+      if (sets.length > 0) {
+        await connection.execute<ResultSetHeader>(
+          `UPDATE content_idea_workflows SET ${sets.join(', ')} WHERE id = ?`,
+          [...values, id]
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          id: Number(id),
+          message: '워크플로우가 업데이트되었습니다.',
+        },
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (error: any) {
+    console.error('Error updating workflow:', error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }

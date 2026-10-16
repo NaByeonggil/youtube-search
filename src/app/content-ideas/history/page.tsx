@@ -255,6 +255,7 @@ export default function ContentIdeasHistoryPage() {
       contentIdeas: workflow.contentIdeas,
       contentIdeasList: workflow.contentIdeasList || [],
       selectedIdea: idea,
+      originalIdeaTitle: workflow.selectedIdea?.title ?? null,
     }));
     router.push('/search');
   };
@@ -278,6 +279,7 @@ export default function ContentIdeasHistoryPage() {
     } else if (workflow.outline) {
       // 목차가 있으면 대본 생성 페이지로
       sessionStorage.setItem('scriptOutline', JSON.stringify({
+        workflowId: workflow.id,
         outline: workflow.outline,
         contentIdea: workflow.selectedIdea,
         sourceVideo: workflow.sourceVideo,

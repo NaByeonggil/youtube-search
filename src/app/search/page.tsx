@@ -131,6 +131,8 @@ export default function SearchPage() {
   const [scriptTarget, setScriptTarget] = useState('');
   const [scriptTone, setScriptTone] = useState('');
   const [workflowError, setWorkflowError] = useState('');
+  // 현재 모달에서 진행 중인 워크플로우 DB 레코드 (ideaTitle: 해당 레코드에 저장된 선택 아이디어)
+  const [savedWorkflow, setSavedWorkflow] = useState<{ id: number; ideaTitle: string | null } | null>(null);
   const [blogSaveResult, setBlogSaveResult] = useState<{
     success: boolean;
     message: string;
@@ -174,6 +176,7 @@ export default function SearchPage() {
       setScriptOutline(null);
       setBlogPost(null);
       setWorkflowError('');
+      setSavedWorkflow(data.workflowId ? { id: data.workflowId, ideaTitle: data.originalIdeaTitle ?? null } : null);
       setShowIdeaModal(true);
 
       const idea = data.selectedIdea;
@@ -187,6 +190,30 @@ export default function SearchPage() {
       console.error('Failed to restore content idea workflow:', e);
     }
   }, []);
+
+  // 워크플로우 진행 상황 저장: 같은 레코드(아이디어 미선택 또는 같은 아이디어)면 갱신, 다른 아이디어면 새 레코드 생성
+  const saveWorkflowProgress = async (payload: Record<string, unknown> & { selectedIdea?: { title: string; [key: string]: unknown } }) => {
+    const ideaTitle = payload.selectedIdea?.title ?? null;
+    const canUpdate = savedWorkflow && (!savedWorkflow.ideaTitle || savedWorkflow.ideaTitle === ideaTitle);
+
+    const response = canUpdate
+      ? await fetch(`/api/content-ideas/workflow/${savedWorkflow.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+      : await fetch('/api/content-ideas/workflow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+    const data = await response.json();
+    if (data.success) {
+      setSavedWorkflow({ id: data.data.id, ideaTitle: ideaTitle ?? savedWorkflow?.ideaTitle ?? null });
+    }
+    return data;
+  };
 
   const handleAnalyze = async (video: VideoResult) => {
     setAnalyzing(video.videoId);
@@ -217,6 +244,7 @@ export default function SearchPage() {
     setSelectedIdea(null);
     setScriptOutline(null);
     setBlogPost(null);
+    setSavedWorkflow(null);
 
     try {
       // Step 1: Analyze content ideas from comments
@@ -239,7 +267,7 @@ export default function SearchPage() {
 
         // 분석 완료 시 바로 워크플로우 저장 (콘텐츠 아이디어 리스트에 표시되도록)
         try {
-          await fetch('/api/content-ideas/workflow', {
+          const saveRes = await fetch('/api/content-ideas/workflow', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -261,6 +289,10 @@ export default function SearchPage() {
               format: format,
             }),
           });
+          const saveData = await saveRes.json();
+          if (saveData.success) {
+            setSavedWorkflow({ id: saveData.data.id, ideaTitle: null });
+          }
           console.log('콘텐츠 아이디어가 히스토리에 저장되었습니다.');
         } catch (saveErr) {
           console.error('워크플로우 저장 실패:', saveErr);
@@ -322,48 +354,44 @@ export default function SearchPage() {
     const workflowFormat = selectedIdea.suggestedFormat === '숏폼' ? 'short' : 'long';
 
     // Save workflow to database
+    let workflowId: number | undefined;
     try {
-      const response = await fetch('/api/content-ideas/workflow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sourceVideo: {
-            videoId: selectedVideo.videoId,
-            title: selectedVideo.title,
-            channelTitle: selectedVideo.channelTitle,
-            thumbnailUrl: selectedVideo.thumbnailUrl,
-          },
-          contentIdeas: contentIdeas ? {
-            viewerQuestions: contentIdeas.viewerQuestions,
-            painPoints: contentIdeas.painPoints,
-            contentRequests: contentIdeas.contentRequests,
-            relatedTopics: contentIdeas.relatedTopics,
-            hotTopics: contentIdeas.hotTopics,
-          } : null,
-          contentIdeasList: contentIdeas?.contentIdeas || [],
-          selectedIdea: {
-            title: selectedIdea.title,
-            description: selectedIdea.description,
-            targetAudience: selectedIdea.targetAudience,
-            estimatedViralScore: selectedIdea.estimatedViralScore,
-            suggestedFormat: selectedIdea.suggestedFormat,
-            reasoning: selectedIdea.reasoning,
-          },
-          outline: {
-            title: scriptOutline.title,
-            hook: scriptOutline.hook,
-            estimatedDuration: scriptOutline.estimatedDuration,
-            sections: scriptOutline.sections,
-            callToAction: scriptOutline.callToAction,
-            thumbnailIdea: scriptOutline.thumbnailIdea,
-            tags: scriptOutline.tags,
-          },
-          format: workflowFormat,
-        }),
+      const data = await saveWorkflowProgress({
+        sourceVideo: {
+          videoId: selectedVideo.videoId,
+          title: selectedVideo.title,
+          channelTitle: selectedVideo.channelTitle,
+          thumbnailUrl: selectedVideo.thumbnailUrl,
+        },
+        contentIdeas: contentIdeas ? {
+          viewerQuestions: contentIdeas.viewerQuestions,
+          painPoints: contentIdeas.painPoints,
+          contentRequests: contentIdeas.contentRequests,
+          relatedTopics: contentIdeas.relatedTopics,
+          hotTopics: contentIdeas.hotTopics,
+        } : null,
+        contentIdeasList: contentIdeas?.contentIdeas || [],
+        selectedIdea: {
+          title: selectedIdea.title,
+          description: selectedIdea.description,
+          targetAudience: selectedIdea.targetAudience,
+          estimatedViralScore: selectedIdea.estimatedViralScore,
+          suggestedFormat: selectedIdea.suggestedFormat,
+          reasoning: selectedIdea.reasoning,
+        },
+        outline: {
+          title: scriptOutline.title,
+          hook: scriptOutline.hook,
+          estimatedDuration: scriptOutline.estimatedDuration,
+          sections: scriptOutline.sections,
+          callToAction: scriptOutline.callToAction,
+          thumbnailIdea: scriptOutline.thumbnailIdea,
+          tags: scriptOutline.tags,
+        },
+        format: workflowFormat,
       });
-
-      const data = await response.json();
       if (data.success) {
+        workflowId = data.data.id;
         console.log('Workflow saved with ID:', data.data.id);
       }
     } catch (err) {
@@ -372,6 +400,7 @@ export default function SearchPage() {
 
     // Store data for script generation page
     sessionStorage.setItem('scriptOutline', JSON.stringify({
+      workflowId,
       outline: scriptOutline,
       contentIdea: selectedIdea,
       sourceVideo: selectedVideo,
@@ -417,36 +446,32 @@ export default function SearchPage() {
         // 콘텐츠 아이디어 워크플로우 저장
         try {
           const workflowFormat = selectedIdea.suggestedFormat === '숏폼' ? 'short' : 'long';
-          const workflowRes = await fetch('/api/content-ideas/workflow', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sourceVideo: selectedVideo ? {
-                videoId: selectedVideo.videoId,
-                title: selectedVideo.title,
-                channelTitle: selectedVideo.channelTitle,
-                thumbnailUrl: selectedVideo.thumbnailUrl,
-              } : null,
-              contentIdeas: contentIdeas ? {
-                viewerQuestions: contentIdeas.viewerQuestions,
-                painPoints: contentIdeas.painPoints,
-                contentRequests: contentIdeas.contentRequests,
-                relatedTopics: contentIdeas.relatedTopics,
-                hotTopics: contentIdeas.hotTopics,
-              } : null,
-              selectedIdea: {
-                title: selectedIdea.title,
-                description: selectedIdea.description,
-                targetAudience: selectedIdea.targetAudience,
-                estimatedViralScore: selectedIdea.estimatedViralScore,
-                suggestedFormat: selectedIdea.suggestedFormat,
-                reasoning: selectedIdea.reasoning,
-              },
-              format: workflowFormat,
-              generatedBlog: data.data.blogPost,
-            }),
+          const workflowData = await saveWorkflowProgress({
+            sourceVideo: selectedVideo ? {
+              videoId: selectedVideo.videoId,
+              title: selectedVideo.title,
+              channelTitle: selectedVideo.channelTitle,
+              thumbnailUrl: selectedVideo.thumbnailUrl,
+            } : null,
+            contentIdeas: contentIdeas ? {
+              viewerQuestions: contentIdeas.viewerQuestions,
+              painPoints: contentIdeas.painPoints,
+              contentRequests: contentIdeas.contentRequests,
+              relatedTopics: contentIdeas.relatedTopics,
+              hotTopics: contentIdeas.hotTopics,
+            } : null,
+            selectedIdea: {
+              title: selectedIdea.title,
+              description: selectedIdea.description,
+              targetAudience: selectedIdea.targetAudience,
+              estimatedViralScore: selectedIdea.estimatedViralScore,
+              suggestedFormat: selectedIdea.suggestedFormat,
+              reasoning: selectedIdea.reasoning,
+            },
+            contentIdeasList: contentIdeas?.contentIdeas || [],
+            format: workflowFormat,
+            generatedBlog: data.data.blogPost,
           });
-          const workflowData = await workflowRes.json();
           if (workflowData.success) {
             console.log('Workflow saved with ID:', workflowData.data.id);
           }
@@ -539,6 +564,7 @@ ${blogPost.conclusion}
     setScriptTarget('');
     setScriptTone('');
     setWorkflowError('');
+    setSavedWorkflow(null);
     setBlogSaveResult(null);
   };
 
